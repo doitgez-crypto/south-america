@@ -1,34 +1,123 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 
+const FIXED_TRIP_ID = import.meta.env.VITE_TRIP_ID
+
+const PROJECT_ID = 'tblppttmjzthnolnzrjr'
+const TOKEN_KEY = `sb-${PROJECT_ID}-auth-token`
+
 export function useAuth() {
-  const [user, setUser]       = useState(null)
+  const [user, setUser]       = useState(() => {
+    try {
+      const stored = localStorage.getItem(TOKEN_KEY)
+      if (stored) {
+        const session = JSON.parse(stored)
+        return session.user || null
+      }
+    } catch (e) {}
+    return null
+  })
   const [profile, setProfile] = useState(null)
-  const [loading, setLoading] = useState(true)
+  
+  // If we already have a user in cache, we skip the initial "Checking..." spinner
+  const [loading, setLoading] = useState(!user)
+  const [error, setError]     = useState(null)
 
   const fetchProfile = useCallback(async (uid) => {
-    const { data } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', uid)
-      .single()
-    setProfile(data)
+    try {
+      console.log('DEBUG Fetching Profile for UID:', uid)
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', uid)
+        .maybeSingle()
+
+      if (error) {
+        console.error('DEBUG Select Profile Error:', error)
+        throw error
+      }
+
+      if (!data) {
+        console.log('DEBUG Profile missing, attempting to create...')
+        const { data: userData } = await supabase.auth.getUser()
+        const currentUser = userData.user
+        
+        const insertData = {
+          id: uid,
+          email: currentUser?.email || '',
+          username: currentUser?.email?.split('@')[0] || 'User',
+          trip_id: FIXED_TRIP_ID || ''
+        }
+
+        console.log('DEBUG Attempting Insert with:', insertData)
+        console.log('DEBUG Current Auth User ID:', currentUser?.id)
+        console.log('DEBUG Matches UID?', currentUser?.id === uid)
+        
+        const { data: newProfile, error: createError } = await supabase
+          .from('profiles')
+          .insert(insertData)
+          .select()
+          .maybeSingle()
+        
+        if (createError) {
+          console.error('DEBUG Create Profile Error:', createError)
+          throw createError
+        }
+        console.log('DEBUG Profile created successfully:', newProfile)
+        setProfile(newProfile)
+      } else if (data && !data.trip_id && FIXED_TRIP_ID) {
+        console.log('DEBUG Profile exists but missing trip_id, auto-assigning...')
+        const { data: updated, error: upError } = await supabase
+          .from('profiles')
+          .update({ trip_id: FIXED_TRIP_ID })
+          .eq('id', uid)
+          .select()
+          .maybeSingle()
+        
+        if (upError) {
+          console.error('DEBUG Update Profile Error:', upError)
+          throw upError
+        }
+        setProfile(updated)
+      } else {
+        console.log('DEBUG Profile loaded successfully')
+        setProfile(data)
+      }
+    } catch (err) {
+      console.error('DEBUG Error fetching profile:', err)
+      setProfile(null)
+    }
   }, [])
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      const u = session?.user ?? null
-      setUser(u)
-      if (u) fetchProfile(u.id).finally(() => setLoading(false))
-      else setLoading(false)
-    })
+    const initAuth = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        const u = session?.user ?? null
+        setUser(u)
+        if (u) await fetchProfile(u.id)
+      } catch (err) {
+        console.error('Session error:', err)
+        setError(err.message)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    initAuth()
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
         const u = session?.user ?? null
         setUser(u)
-        if (u) await fetchProfile(u.id)
-        else setProfile(null)
+        if (u) {
+          setLoading(true)
+          await fetchProfile(u.id)
+          setLoading(false)
+        } else {
+          setProfile(null)
+          setLoading(false)
+        }
       }
     )
     return () => subscription.unsubscribe()
@@ -53,7 +142,23 @@ export function useAuth() {
   }
 
   const signOut = async () => {
-    await supabase.auth.signOut()
+    try {
+      console.log('Attempting sign out...')
+      // Clear state immediately to avoid being stuck in loading if signOut hangs
+      setUser(null)
+      setProfile(null)
+      setLoading(false)
+      
+      const { error } = await supabase.auth.signOut()
+      if (error) console.error('Supabase signOut error:', error)
+      
+      console.log('Sign out successful, reloading...')
+      window.location.reload()
+    } catch (err) {
+      console.error('Catch-all sign out error:', err)
+      localStorage.clear()
+      window.location.reload()
+    }
   }
 
   const setTripId = async (tripId) => {
@@ -66,5 +171,5 @@ export function useAuth() {
     await fetchProfile(user.id)
   }
 
-  return { user, profile, loading, signUp, signIn, signOut, setTripId, fetchProfile }
+  return { user, profile, loading, error, signUp, signIn, signOut, setTripId, fetchProfile }
 }

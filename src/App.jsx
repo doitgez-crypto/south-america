@@ -1,35 +1,80 @@
-import React from 'react';
-import { ToastContainer } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
+import React from 'react'
+import { ToastContainer } from 'react-toastify'
+import 'react-toastify/dist/ReactToastify.css'
+import { useAppContext } from './context/AppContext'
+import { LoadingSkeleton } from './components/ui/LoadingSkeleton'
+import AuthScreen from './components/auth/AuthScreen'
+import AppShell from './components/layout/AppShell'
 
 function App() {
-  return (
-    <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-900 transition-colors duration-300">
-      <header className="glass sticky top-0 z-50 px-4 py-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-400 dark:to-indigo-400">
-            South America Planner
-          </h1>
-          <div className="flex items-center space-x-4">
-            {/* Auth / Settings controls will go here */}
+  const { user, profile, authLoading, signOut, error } = useAppContext()
+  const [showLogout, setShowLogout] = React.useState(false)
+
+  React.useEffect(() => {
+    let timer
+    if (authLoading || (user && !profile?.trip_id)) {
+      timer = setTimeout(() => setShowLogout(true), 3000)
+    } else {
+      setShowLogout(false)
+    }
+    return () => clearTimeout(timer)
+  }, [authLoading, user, profile])
+
+  if (error) {
+    return (
+      <div className="h-screen flex flex-col items-center justify-center bg-earth-50 p-6 text-center">
+        <div className="text-4xl mb-4">⚠️</div>
+        <h2 className="text-xl font-bold text-earth-800 mb-2 font-display">שגיאה בהתחברות</h2>
+        <p className="text-earth-600 mb-6 max-w-sm">{error}</p>
+        <button 
+          onClick={() => window.location.reload()}
+          className="px-6 py-2 bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition-all shadow-md hover:shadow-lg active:scale-95"
+        >
+          נסה שוב
+        </button>
+      </div>
+    )
+  }
+
+  // Use Skeleton while waiting for initial auth (zero-delay skips this if user in cache)
+  if (authLoading) {
+    return <LoadingSkeleton />
+  }
+
+  // If no user is found after initial check, show auth screen
+  if (!user) return <AuthScreen />
+
+  // If we have a user but no profile row yet, show Skeleton with a logout option
+  if (!profile?.trip_id) {
+    return (
+      <div className="relative h-screen w-full">
+        <LoadingSkeleton />
+        {showLogout && (
+          <div className="fixed inset-x-0 bottom-32 flex flex-col items-center gap-2 z-[100]">
+            <button 
+              onClick={() => signOut()}
+              className="px-4 py-2 bg-white/80 backdrop-blur border border-earth-200 text-earth-600 font-semibold rounded-full shadow-lg hover:bg-white transition-all text-sm"
+            >
+              לוקח יותר מדי זמן? התנתק ונסה שוב
+            </button>
+            <button 
+              onClick={() => { localStorage.clear(); window.location.reload(); }}
+              className="text-earth-400 hover:text-earth-600 text-xs underline"
+            >
+              ניקוי נתונים מלא (Hard reset)
+            </button>
           </div>
-        </div>
-      </header>
+        )}
+      </div>
+    )
+  }
 
-      <main className="flex-1 w-full max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
-        <div className="text-center mt-20">
-          <h2 className="text-3xl font-extrabold text-slate-900 dark:text-white sm:text-4xl">
-            Welcome to your collaborative journey
-          </h2>
-          <p className="mt-4 text-xl text-slate-500 dark:text-slate-400">
-            Authentication and Map initialization are currently building. Stay tuned.
-          </p>
-        </div>
-      </main>
-
-      <ToastContainer position="bottom-right" theme="colored" />
-    </div>
-  );
+  return (
+    <>
+      <AppShell />
+      <ToastContainer position="bottom-left" theme="colored" rtl />
+    </>
+  )
 }
 
-export default App;
+export default App
