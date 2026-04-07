@@ -5,8 +5,10 @@ import {
   EXPENSE_CATEGORIES,
   EXPENSE_CATEGORY_LABELS_HE,
 } from '../../lib/constants'
+import { Info, DollarSign } from 'lucide-react'
 
 const TODAY = new Date().toISOString().slice(0, 10)
+const POPULAR_CURRENCIES = ['USD', 'ILS', 'ARS', 'PEN', 'CLP', 'BRL', 'COP']
 
 export default function AddExpenseModal({ expense, isOpen, onClose, onSave, isSaving }) {
   const [amount, setAmount]       = useState('')
@@ -45,93 +47,114 @@ export default function AddExpenseModal({ expense, isOpen, onClose, onSave, isSa
   }
 
   const isEditing = !!expense
+  const isARS = currency === 'ARS'
 
   return (
     <BottomSheet
       isOpen={isOpen}
       onClose={onClose}
-      title={isEditing ? 'ערוך הוצאה' : 'הוסף הוצאה'}
+      title={isEditing ? 'עריכת הוצאה' : 'הוספת הוצאה'}
     >
-      <form onSubmit={handleSubmit} className="p-5 space-y-4">
+      <form onSubmit={handleSubmit} className="p-5 space-y-5 pb-10">
         {/* Amount + Currency */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">סכום</label>
+          <label className="block text-sm font-semibold text-gray-600 mb-2">סכום ומטבע</label>
           <div className="flex gap-2">
-            <input
-              type="number"
-              min="0.01"
-              step="0.01"
-              required
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              placeholder="0.00"
-              className="flex-1 px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-400"
-              dir="ltr"
-            />
+            <div className="relative flex-1">
+               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-medium">
+                {CURRENCY_SYMBOLS[currency] || ''}
+              </span>
+              <input
+                type="number"
+                min="0.01"
+                step="0.01"
+                required
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                placeholder="0.00"
+                className="w-full pl-8 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:outline-none font-semibold"
+                dir="ltr"
+              />
+            </div>
             <select
               value={currency}
               onChange={(e) => setCurrency(e.target.value)}
-              className="px-3 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-400 bg-white font-medium"
+              className="w-32 px-3 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:outline-none font-bold text-center"
             >
-              {Object.entries(CURRENCY_SYMBOLS).map(([code, sym]) => (
-                <option key={code} value={code}>{code} {sym}</option>
+              {POPULAR_CURRENCIES.map(code => (
+                <option key={code} value={code}>{code}</option>
               ))}
+              <option disabled>──────</option>
+              {Object.keys(CURRENCY_SYMBOLS)
+                .filter(c => !POPULAR_CURRENCIES.includes(c))
+                .map(code => (
+                  <option key={code} value={code}>{code}</option>
+                ))}
             </select>
           </div>
+          
+          {isARS && (
+            <div className="mt-2 p-2 bg-blue-50 rounded-lg flex items-start gap-2 border border-blue-100 animate-in fade-in slide-in-from-top-1">
+              <Info size={14} className="text-blue-500 mt-0.5" />
+              <p className="text-[10px] text-blue-700 leading-tight">
+                <strong>שים לב:</strong> עבור ארגנטינה החישוב מתבצע לפי שער ה"דולר כחול" שהגדרת בתפריט הראשי (אם מופעל).
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Description */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">תיאור</label>
+          <label className="block text-sm font-semibold text-gray-600 mb-2">תיאור</label>
           <input
             type="text"
             value={description}
             onChange={(e) => setDesc(e.target.value)}
-            placeholder="לדוגמה: ארוחת ערב"
-            className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-400"
+            placeholder="מה קנינו?"
+            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:outline-none"
           />
         </div>
 
-        {/* Category */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">קטגוריה</label>
-          <select
-            value={category}
-            onChange={(e) => setCategory(e.target.value)}
-            className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-400 bg-white"
-          >
-            {EXPENSE_CATEGORIES.map((c) => (
-              <option key={c} value={c}>{EXPENSE_CATEGORY_LABELS_HE[c]}</option>
-            ))}
-          </select>
+        {/* Category & Date Row */}
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-semibold text-gray-600 mb-2">קטגוריה</label>
+            <select
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:outline-none"
+            >
+              {EXPENSE_CATEGORIES.map((c) => (
+                <option key={c} value={c}>{EXPENSE_CATEGORY_LABELS_HE[c]}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-semibold text-gray-600 mb-2">תאריך</label>
+            <input
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:outline-none"
+              dir="ltr"
+            />
+          </div>
         </div>
 
-        {/* Date */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">תאריך</label>
-          <input
-            type="date"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-400"
-            dir="ltr"
-          />
-        </div>
-
-        <div className="flex gap-3 pt-2">
+        <div className="flex gap-3 pt-4">
           <button
             type="button"
             onClick={onClose}
-            className="flex-1 py-3 border border-gray-300 rounded-xl text-gray-600 font-medium hover:bg-gray-50 transition-colors"
+            className="flex-1 py-4 bg-gray-100 text-gray-600 font-bold rounded-2xl active:scale-95 transition-all"
           >
             ביטול
           </button>
           <button
             type="submit"
             disabled={isSaving}
-            className="flex-1 py-3 bg-primary-500 hover:bg-primary-600 text-white font-semibold rounded-xl transition-colors disabled:opacity-60"
+            className="flex-1 py-4 bg-primary-600 text-white font-bold rounded-2xl shadow-lg shadow-primary-200 active:scale-95 transition-all disabled:opacity-50"
           >
-            {isSaving ? 'שומר...' : 'שמור'}
+            {isSaving ? 'שומר...' : 'שמור הוצאה'}
           </button>
         </div>
       </form>

@@ -90,37 +90,65 @@ export function useAuth() {
   }, [])
 
   useEffect(() => {
+    let isMounted = true
+
     const initAuth = async () => {
+      // Safety timeout: if auth takes > 5s, stop loading to allow manual retry/login
+      const timeout = setTimeout(() => {
+        if (isMounted) {
+          console.warn('Auth initialization timed out.')
+          setLoading(false)
+        }
+      }, 5000)
+
       try {
-        const { data: { session } } = await supabase.auth.getSession()
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+        
+        if (sessionError) {
+           console.error('Session error:', sessionError)
+           setUser(null)
+           setProfile(null)
+           throw sessionError
+        }
+
+        if (!isMounted) return
+        
         const u = session?.user ?? null
         setUser(u)
-        if (u) await fetchProfile(u.id)
+        if (u) {
+          await fetchProfile(u.id)
+        }
       } catch (err) {
-        console.error('Session error:', err)
-        setError(err.message)
+        console.error('Auth initialization failed:', err)
+        setError('שגיאה באימות המשתמש. נסה לרענן.')
       } finally {
-        setLoading(false)
+        clearTimeout(timeout)
+        if (isMounted) setLoading(false)
       }
     }
 
     initAuth()
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
+      async (event, session) => {
+        if (!isMounted) return
+        
         const u = session?.user ?? null
         setUser(u)
-        if (u) {
-          setLoading(true)
-          await fetchProfile(u.id)
-          setLoading(false)
-        } else {
+        
+        if (event === 'SIGNED_OUT') {
           setProfile(null)
           setLoading(false)
+        } else if (event === 'SIGNED_IN' && u) {
+          // App.jsx handles the skeleton automatically if profile is missing
+          await fetchProfile(u.id)
         }
       }
     )
-    return () => subscription.unsubscribe()
+    return () => {
+      isMounted = false
+      subscription.unsubscribe()
+    }
   }, [fetchProfile])
 
   const signUp = async ({ email, password, username }) => {

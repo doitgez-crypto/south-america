@@ -61,6 +61,12 @@ export function useAttractions(tripId, filters = {}) {
         if (coords) clean.coordinates = coords
       }
 
+      // Validate coordinates to prevent "ghost markers" at 0,0
+      const coords = clean.coordinates
+      if (!coords || (coords.lat === 0 && coords.lng === 0)) {
+        throw new Error('קואורדינטות לא תקינות. אנא בחר מיקום על המפה.')
+      }
+
       const { data, error } = await supabase
         .from('attractions')
         .insert({ ...clean, trip_id: tripId, created_by: userId, last_edited_by: userId })
@@ -115,6 +121,12 @@ export function useAttractions(tripId, filters = {}) {
       if (!clean.coordinates && clean.name) {
         const coords = await geocodeLocation(`${clean.name}, ${clean.country}`)
         if (coords) clean.coordinates = coords
+      }
+
+      // Validate coordinates
+      const coords = clean.coordinates
+      if (coords && (coords.lat === 0 && coords.lng === 0)) {
+        throw new Error('קואורדינטות לא תקינות (0,0).')
       }
       const { data, error } = await supabase
         .from('attractions')
