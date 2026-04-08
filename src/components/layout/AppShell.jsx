@@ -33,15 +33,9 @@ export default function AppShell() {
   }
 
   const handleSaveAttraction = (payload) => {
-    createAttraction(
-      { payload, userId: user.id },
-      {
-        onSuccess: () => {
-          setIsAddModalOpen(false)
-          setAddModalData(null)
-        }
-      }
-    )
+    setIsAddModalOpen(false)
+    setAddModalData(null)
+    createAttraction({ payload, userId: user.id })
   }
 
   return (

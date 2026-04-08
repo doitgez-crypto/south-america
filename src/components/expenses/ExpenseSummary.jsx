@@ -8,11 +8,10 @@ export default function ExpenseSummary({ expenses }) {
   const { blueRate, useBlueRate }   = useAppContext()
 
   const computeUsd = (expense) => {
-    if (expense.amount_usd != null) return expense.amount_usd
     if (expense.currency_code === 'ARS' && useBlueRate && blueRate > 0) {
-      return expense.amount_local / blueRate
+      return expense.amount / blueRate
     }
-    return convert(expense.amount_local, expense.currency_code, 'USD') ?? 0
+    return convert(expense.amount, expense.currency_code, 'USD') ?? 0
   }
 
   const totalUsd = expenses.reduce((sum, e) => sum + computeUsd(e), 0)

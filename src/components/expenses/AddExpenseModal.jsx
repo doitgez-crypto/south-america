@@ -19,7 +19,7 @@ export default function AddExpenseModal({ expense, isOpen, onClose, onSave, isSa
 
   useEffect(() => {
     if (expense) {
-      setAmount(String(expense.amount_local ?? ''))
+      setAmount(String(expense.amount ?? ''))
       setCurrency(expense.currency_code ?? 'USD')
       setDesc(expense.description ?? '')
       setCategory(expense.category ?? 'Other')
@@ -38,7 +38,7 @@ export default function AddExpenseModal({ expense, isOpen, onClose, onSave, isSa
     const val = parseFloat(amount)
     if (!val || val <= 0) return
     onSave({
-      amount_local: val,
+      amount: val,
       currency_code: currency,
       description: description.trim(),
       category,

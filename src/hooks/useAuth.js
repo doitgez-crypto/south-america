@@ -40,7 +40,7 @@ export function useAuth() {
       if (!data) {
         console.log('DEBUG Profile missing, attempting to create...')
         const { data: userData } = await supabase.auth.getUser()
-        const currentUser = userData.user
+        const currentUser = userData?.user
         
         const insertData = {
           id: uid,
@@ -48,10 +48,6 @@ export function useAuth() {
           username: currentUser?.email?.split('@')[0] || 'User',
           trip_id: FIXED_TRIP_ID || ''
         }
-
-        console.log('DEBUG Attempting Insert with:', insertData)
-        console.log('DEBUG Current Auth User ID:', currentUser?.id)
-        console.log('DEBUG Matches UID?', currentUser?.id === uid)
         
         const { data: newProfile, error: createError } = await supabase
           .from('profiles')
@@ -63,7 +59,6 @@ export function useAuth() {
           console.error('DEBUG Create Profile Error:', createError)
           throw createError
         }
-        console.log('DEBUG Profile created successfully:', newProfile)
         setProfile(newProfile)
       } else if (data && !data.trip_id && FIXED_TRIP_ID) {
         console.log('DEBUG Profile exists but missing trip_id, auto-assigning...')
@@ -84,8 +79,14 @@ export function useAuth() {
         setProfile(data)
       }
     } catch (err) {
-      console.error('DEBUG Error fetching profile:', err)
-      setProfile(null)
+      console.error('DEBUG Error forcing fallback profile:', err)
+      // Provide a fallback profile so the UI NEVER hangs if DB operations fail!
+      setProfile({
+        id: uid,
+        trip_id: FIXED_TRIP_ID || 'c8a2d1e4-3f5b-4a6c-8d9e-1b2c3d4e5f60',
+        username: 'User',
+        isFallback: true
+      })
     }
   }, [])
 

@@ -2,7 +2,6 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useEffect } from 'react'
 import { toast } from 'react-toastify'
 import { supabase } from '../lib/supabase'
-import { useCurrency } from './useCurrency'
 
 const QUERY_KEY = 'expenses'
 
@@ -25,8 +24,6 @@ async function fetchExpenses(tripId) {
  */
 export function useExpenses(tripId, { blueRate = 1000, useBlueRate = false } = {}) {
   const queryClient = useQueryClient()
-  const { convert, rates } = useCurrency()
-
   // ── Fetch ──────────────────────────────────────────────
   const query = useQuery({
     queryKey: [QUERY_KEY, tripId],
@@ -53,30 +50,15 @@ export function useExpenses(tripId, { blueRate = 1000, useBlueRate = false } = {
   // ── Create ─────────────────────────────────────────────
   const createMutation = useMutation({
     mutationFn: async ({ payload, userId }) => {
-      const { amount_local, currency_code, description, category, date } = payload
-
-      // Compute USD and ILS at write time (preserves historical rate)
-      let amount_usd = null
-      let amount_ils = null
-
-      if (currency_code === 'ARS' && useBlueRate && blueRate > 0) {
-        amount_usd = amount_local / blueRate
-      } else if (rates) {
-        amount_usd = convert(amount_local, currency_code, 'USD')
-      }
-      if (rates && amount_usd != null) {
-        amount_ils = convert(amount_usd, 'USD', 'ILS')
-      }
+      const { amount, currency_code, description, category, date } = payload
 
       const { data, error } = await supabase
         .from('expenses')
         .insert({
           trip_id: tripId,
           created_by: userId,
-          amount_local,
+          amount,
           currency_code,
-          amount_usd,
-          amount_ils,
           description: description ?? '',
           category: category ?? 'Other',
           date: date ?? new Date().toISOString().slice(0, 10),
@@ -112,25 +94,7 @@ export function useExpenses(tripId, { blueRate = 1000, useBlueRate = false } = {
   // ── Update ─────────────────────────────────────────────
   const updateMutation = useMutation({
     mutationFn: async ({ id, payload }) => {
-      const { amount_local, currency_code } = payload
-
-      let amount_usd = null
-      let amount_ils = null
-
-      if (amount_local != null && currency_code) {
-        if (currency_code === 'ARS' && useBlueRate && blueRate > 0) {
-          amount_usd = amount_local / blueRate
-        } else if (rates) {
-          amount_usd = convert(amount_local, currency_code, 'USD')
-        }
-        if (rates && amount_usd != null) {
-          amount_ils = convert(amount_usd, 'USD', 'ILS')
-        }
-      }
-
       const updateData = { ...payload }
-      if (amount_usd != null) updateData.amount_usd = amount_usd
-      if (amount_ils != null) updateData.amount_ils = amount_ils
 
       const { data, error } = await supabase
         .from('expenses')

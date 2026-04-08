@@ -3,7 +3,7 @@ import { Pencil, Trash2 } from 'lucide-react'
 import { EXPENSE_CATEGORY_ICONS, EXPENSE_CATEGORY_LABELS_HE, CURRENCY_SYMBOLS } from '../../lib/constants'
 
 export default function ExpenseItem({ expense, onEdit, onDelete }) {
-  const { description, category, amount_local, currency_code, amount_usd } = expense
+  const { description, category, amount, currency_code } = expense
   const [swiped, setSwiped] = useState(false)
   const touchStartX = useRef(null)
 
@@ -69,11 +69,8 @@ export default function ExpenseItem({ expense, onEdit, onDelete }) {
         {/* Amounts */}
         <div className="text-left flex-shrink-0" dir="ltr">
           <p className="font-semibold text-gray-800">
-            {sym}{amount_local?.toLocaleString()}
+            {sym}{amount?.toLocaleString()}
           </p>
-          {amount_usd != null && (
-            <p className="text-xs text-gray-400">${amount_usd.toFixed(2)}</p>
-          )}
         </div>
       </div>
     </div>

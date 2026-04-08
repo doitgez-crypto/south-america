@@ -31,7 +31,7 @@ export default function ExpenseList({ expenses, onEdit, onDelete }) {
     <div className="flex-1 overflow-y-auto pb-4">
       {sortedDates.map((date) => {
         const dayExpenses = groups[date]
-        const dayTotal = dayExpenses.reduce((s, e) => s + (e.amount_usd ?? 0), 0)
+        const dayTotal = dayExpenses.reduce((s, e) => s + (e.amount ?? 0), 0)
 
         return (
           <div key={date}>
