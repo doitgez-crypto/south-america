@@ -3,6 +3,8 @@ import { CATEGORIES, CATEGORY_ICONS, CATEGORY_LABELS_HE } from '../../lib/consta
 import { useImageUpload } from '../../hooks/useImageUpload'
 import { Loader2, Plus, X, Globe, DollarSign, Image as ImageIcon } from 'lucide-react'
 import SearchBar from './SearchBar'
+import { useAppContext } from '../../context/AppContext'
+import { useCategories } from '../../hooks/useCategories'
 
 export default function AddAttractionModal({ 
   isOpen, 
@@ -11,6 +13,9 @@ export default function AddAttractionModal({
   isSaving, 
   initialData 
 }) {
+  const { profile } = useAppContext()
+  const { categories: dbCategories, createCategory } = useCategories(profile?.trip_id)
+
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [category, setCategory] = useState('Must-See')
@@ -77,9 +82,19 @@ export default function AddAttractionModal({
     setImages([...images, ...uploadedUrls])
   }
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
-    const finalCategory = isCustom ? customCategory.trim() : category
+    
+    let finalCategory = category
+    if (isCustom && customCategory.trim()) {
+      finalCategory = customCategory.trim()
+      try {
+        await createCategory(finalCategory)
+      } catch (err) {
+        console.warn('Category creation skipped or already exists', err)
+      }
+    }
+    
     const finalLinks = links.filter(l => l.trim().length > 0)
     
     onSave({
@@ -110,7 +125,7 @@ export default function AddAttractionModal({
         <h2 className="text-xl font-bold text-earth-800">פרטי המקום</h2>
         <button 
           onClick={handleSubmit}
-          disabled={!name.trim() || isSaving || uploading || !coords}
+          disabled={!name.trim() || isSaving || uploading}
           className="px-6 py-2 bg-primary-600 text-white font-bold rounded-xl disabled:opacity-50 active:scale-95 transition-all shadow-md flex items-center gap-2"
         >
           {(isSaving || uploading) && <Loader2 className="w-4 h-4 animate-spin" />}
@@ -192,8 +207,10 @@ export default function AddAttractionModal({
              <select 
                value={isCustom ? 'Other' : category}
                onChange={(e) => {
-                 if (e.target.value === 'Other') setIsCustom(true)
-                 else {
+                 if (e.target.value === 'Other') {
+                   setIsCustom(true)
+                   setCategory('Other')
+                 } else {
                    setCategory(e.target.value)
                    setIsCustom(false)
                  }
@@ -203,7 +220,10 @@ export default function AddAttractionModal({
                {CATEGORIES.map(cat => (
                  <option key={cat} value={cat}>{CATEGORY_ICONS[cat]} {CATEGORY_LABELS_HE[cat]}</option>
                ))}
-               <option value="Other">➕ מותאם אישית</option>
+               {dbCategories.map(cat => (
+                 <option key={`db-${cat.id}`} value={cat.name}>📌 {cat.name}</option>
+               ))}
+               <option value="Other">➕ מותאם אישית (חדש)</option>
              </select>
           </div>
         </div>

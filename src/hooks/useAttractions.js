@@ -57,14 +57,18 @@ export function useAttractions(tripId, filters = {}) {
       // Auto-geocode if name provided but no coords (fallback)
       if (!clean.coordinates && clean.name) {
         const q = `${clean.name}, ${clean.country}, South America`
-        const coords = await geocodeLocation(q)
-        if (coords) clean.coordinates = coords
+        // We catch errors from geocode so it doesn't fail the whole creation if offline
+        try {
+          const coords = await geocodeLocation(q)
+          if (coords) clean.coordinates = coords
+        } catch (e) {
+          console.warn('Geocoding failed, proceeding without coordinates')
+        }
       }
 
-      // Validate coordinates to prevent "ghost markers" at 0,0
-      const coords = clean.coordinates
-      if (!coords || (coords.lat === 0 && coords.lng === 0)) {
-        throw new Error('קואורדינטות לא תקינות. אנא בחר מיקום על המפה.')
+      // If coordinates are explicitly 0,0, remove them to keep them as null
+      if (clean.coordinates && clean.coordinates.lat === 0 && clean.coordinates.lng === 0) {
+        clean.coordinates = null
       }
 
       const { data, error } = await supabase
@@ -106,7 +110,7 @@ export function useAttractions(tripId, filters = {}) {
       queryClient.setQueryData([QUERY_KEY, tripId], (old = []) => 
         old.map(item => item.id === context.optimisticId ? data : item)
       )
-      toast.success('המיקום נשמר!')
+      toast.success('המקום נשמר!')
     },
     onSettled: () => {
       // Final sync to ensure everything is correct
@@ -119,15 +123,18 @@ export function useAttractions(tripId, filters = {}) {
     mutationFn: async ({ id, payload, userId }) => {
       const clean = sanitizeAttractionPayload(payload)
       if (!clean.coordinates && clean.name) {
-        const coords = await geocodeLocation(`${clean.name}, ${clean.country}`)
-        if (coords) clean.coordinates = coords
+        try {
+          const coords = await geocodeLocation(`${clean.name}, ${clean.country}`)
+          if (coords) clean.coordinates = coords
+        } catch (e) {
+          console.warn('Geocoding failed, preserving existing state')
+        }
       }
 
-      // Validate coordinates
-      const coords = clean.coordinates
-      if (coords && (coords.lat === 0 && coords.lng === 0)) {
-        throw new Error('קואורדינטות לא תקינות (0,0).')
+      if (clean.coordinates && clean.coordinates.lat === 0 && clean.coordinates.lng === 0) {
+        clean.coordinates = null
       }
+
       const { data, error } = await supabase
         .from('attractions')
         .update({ ...clean, last_edited_by: userId })

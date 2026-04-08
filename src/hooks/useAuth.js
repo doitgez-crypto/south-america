@@ -60,20 +60,26 @@ export function useAuth() {
           throw createError
         }
         setProfile(newProfile)
-      } else if (data && !data.trip_id && FIXED_TRIP_ID) {
-        console.log('DEBUG Profile exists but missing trip_id, auto-assigning...')
-        const { data: updated, error: upError } = await supabase
-          .from('profiles')
-          .update({ trip_id: FIXED_TRIP_ID })
-          .eq('id', uid)
-          .select()
-          .maybeSingle()
-        
-        if (upError) {
-          console.error('DEBUG Update Profile Error:', upError)
-          throw upError
+      } else if (data && !data.trip_id) {
+        const tripId = FIXED_TRIP_ID || 'c8a2d1e4-3f5b-4a6c-8d9e-1b2c3d4e5f60'
+        console.log('DEBUG Profile exists but missing trip_id, auto-assigning:', tripId)
+        if (FIXED_TRIP_ID) {
+          const { data: updated, error: upError } = await supabase
+            .from('profiles')
+            .update({ trip_id: tripId })
+            .eq('id', uid)
+            .select()
+            .maybeSingle()
+          if (upError) {
+            console.error('DEBUG Update Profile Error:', upError)
+            setProfile({ ...data, trip_id: tripId })
+          } else {
+            setProfile(updated)
+          }
+        } else {
+          // No env var configured — assign fallback in memory so the app can render
+          setProfile({ ...data, trip_id: tripId })
         }
-        setProfile(updated)
       } else {
         console.log('DEBUG Profile loaded successfully')
         setProfile(data)
