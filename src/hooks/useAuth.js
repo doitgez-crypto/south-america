@@ -154,11 +154,16 @@ export function useAuth() {
   const signUp = async ({ email, password, username }) => {
     const { data, error } = await supabase.auth.signUp({ email, password })
     if (error) throw error
-    if (data.user && username) {
-      await supabase
+    if (data.user) {
+      const { error: profileError } = await supabase
         .from('profiles')
-        .update({ username })
-        .eq('id', data.user.id)
+        .insert({
+          id: data.user.id,
+          email,
+          username: username || email.split('@')[0],
+          trip_id: FIXED_TRIP_ID || ''
+        })
+      if (profileError) console.error('Error creating profile on signup:', profileError)
     }
     return data
   }

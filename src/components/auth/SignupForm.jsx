@@ -23,9 +23,24 @@ export default function SignupForm({ onSwitchToLogin }) {
     }
     setLoading(true)
     try {
-      await signUp({ email: email.trim(), password, username: username.trim() })
+      const data = await signUp({ email: email.trim(), password, username: username.trim() })
+      
+      // If we got here, signup didn't throw an error.
+      // If session is null, Supabase requires email verification.
+      if (data?.session === null) {
+        alert('ההרשמה הצליחה! אך חובה לאשר את האימייל. בדוק את תיבת הדואר שלך (כולל ספאם) לחץ על הקישור וחזור להתחבר כאן.')
+        onSwitchToLogin()
+      } else {
+        // If there's a session, App.jsx will automatically redirect because useAuth will detect it.
+        alert('ההרשמה בוצעה בהצלחה!')
+      }
     } catch (err) {
-      setError(err.message ?? 'ההרשמה נכשלה. נסה שוב.')
+      const msg = err.message
+      if (msg.includes('already registered')) {
+        setError('משתמש זה כבר רשום במערכת. לחץ על "התחבר" למטה.')
+      } else {
+        setError(msg ?? 'ההרשמה נכשלה. נסה שוב.')
+      }
     } finally {
       setLoading(false)
     }
