@@ -9,7 +9,8 @@ const COUNTRY_FLAGS = {
 }
 
 export default function AttractionCard({ attraction, onSelect }) {
-  const { name, country, category, rating, price_local, currency_code, image_urls = [] } = attraction
+  const { name, country, category, rating, price_local, currency_code } = attraction
+  const image_urls = attraction.image_urls || []
   const thumb = image_urls[0]
 
   return (

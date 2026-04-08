@@ -44,8 +44,8 @@ function App() {
   // If no user is found after initial check, show auth screen
   if (!user) return <AuthScreen />
 
-  // If we have a user but no profile row yet, show Skeleton with a logout option
-  if (!profile?.trip_id) {
+  // If we have a user but profile hasn't loaded yet, show Skeleton with a logout option
+  if (!profile) {
     return (
       <div className="relative h-screen w-full">
         <LoadingSkeleton />

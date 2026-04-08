@@ -11,7 +11,9 @@ export default function AttractionDetailModal({ attraction, isOpen, onClose, upd
 
   if (!attraction) return null
 
-  const { name, country, category, description, rating, price_local, currency_code, links = [], image_urls = [] } = attraction
+  const { name, country, category, description, rating, price_local, currency_code } = attraction
+  const external_links = attraction.external_links || []
+  const image_urls = attraction.image_urls || []
 
   const handleDelete = () => {
     if (!window.confirm('למחוק את המיקום הזה?')) return
@@ -98,11 +100,11 @@ export default function AttractionDetailModal({ attraction, isOpen, onClose, upd
           )}
 
           {/* Links */}
-          {links.length > 0 && (
+          {external_links.length > 0 && (
             <div>
               <p className="text-xs font-medium text-gray-400 mb-2 uppercase tracking-wide">קישורים</p>
               <div className="space-y-1">
-                {links.map((link, i) => (
+                {external_links.map((link, i) => (
                   <a
                     key={i}
                     href={link}
