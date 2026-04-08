@@ -43,7 +43,7 @@ export function useDocuments(tripId) {
           path,
           metadata: {
             trip_id: tripId,
-            created_by: userId,
+            uploaded_by: userId,
             name: name || file.name,
             file_type: file.type.includes('pdf') ? 'pdf' : 'image',
           }
@@ -58,7 +58,7 @@ export function useDocuments(tripId) {
       
       if (uploadError) {
         if (!navigator.onLine) {
-           await addToQueue({ type: 'document', file, bucket: BUCKET, path, metadata: { trip_id: tripId, name, created_by: userId, file_type: file.type.includes('pdf') ? 'pdf' : 'image' } })
+           await addToQueue({ type: 'document', file, bucket: BUCKET, path, metadata: { trip_id: tripId, name, uploaded_by: userId, file_type: file.type.includes('pdf') ? 'pdf' : 'image' } })
            return { queued: true }
         }
         throw uploadError
@@ -74,7 +74,7 @@ export function useDocuments(tripId) {
         .from('documents')
         .insert({
           trip_id: tripId,
-          created_by: userId,
+          uploaded_by: userId,
           name: name || file.name,
           file_url: publicUrl,
           file_type: file.type.includes('pdf') ? 'pdf' : 'image',

@@ -86,7 +86,7 @@ export default function AddAttractionModal({
       name: name.trim(),
       description: description.trim(),
       category: finalCategory || 'Other',
-      price: price ? parseFloat(price) : null,
+      price_local: price ? parseFloat(price) : null,
       external_links: finalLinks,
       image_urls: images,
       country: initialData?.country || 'Argentina',

@@ -12,7 +12,7 @@ async function fetchExpenses(tripId) {
     .select('*')
     .eq('trip_id', tripId)
     .eq('is_deleted', false)
-    .order('date', { ascending: false })
+    .order('expense_date', { ascending: false })
     .order('created_at', { ascending: false })
   if (error) throw error
   return data
@@ -50,18 +50,17 @@ export function useExpenses(tripId, { blueRate = 1000, useBlueRate = false } = {
   // ── Create ─────────────────────────────────────────────
   const createMutation = useMutation({
     mutationFn: async ({ payload, userId }) => {
-      const { amount, currency_code, description, category, date } = payload
+      const { amount, currency, title, category, expense_date } = payload
 
       const { data, error } = await supabase
         .from('expenses')
         .insert({
           trip_id: tripId,
-          created_by: userId,
           amount,
-          currency_code,
-          description: description ?? '',
+          currency,
+          title: title ?? '',
           category: category ?? 'Other',
-          date: date ?? new Date().toISOString().slice(0, 10),
+          expense_date: expense_date ?? new Date().toISOString().slice(0, 10),
         })
         .select()
         .single()
@@ -94,7 +93,8 @@ export function useExpenses(tripId, { blueRate = 1000, useBlueRate = false } = {
   // ── Update ─────────────────────────────────────────────
   const updateMutation = useMutation({
     mutationFn: async ({ id, payload }) => {
-      const updateData = { ...payload }
+      const { amount, currency, title, category, expense_date } = payload
+      const updateData = { amount, currency, title, category, expense_date }
 
       const { data, error } = await supabase
         .from('expenses')

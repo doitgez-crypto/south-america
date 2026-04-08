@@ -41,7 +41,6 @@ export function sanitizeAttractionPayload(payload) {
     ...payload,
     name: sanitizeText(payload.name),
     description: sanitizeText(payload.description),
-    links: sanitizeLinks(payload.links),
-    currency_code: sanitizeText(payload.currency_code).toUpperCase().slice(0, 3),
+    external_links: sanitizeLinks(payload.external_links),
   }
 }

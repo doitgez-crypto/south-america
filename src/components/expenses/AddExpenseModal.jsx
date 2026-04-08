@@ -13,21 +13,21 @@ const POPULAR_CURRENCIES = ['USD', 'ILS', 'ARS', 'PEN', 'CLP', 'BRL', 'COP']
 export default function AddExpenseModal({ expense, isOpen, onClose, onSave, isSaving }) {
   const [amount, setAmount]       = useState('')
   const [currency, setCurrency]   = useState('USD')
-  const [description, setDesc]    = useState('')
+  const [title, setTitle]         = useState('')
   const [category, setCategory]   = useState('Other')
-  const [date, setDate]           = useState(TODAY)
+  const [expense_date, setDate]   = useState(TODAY)
 
   useEffect(() => {
     if (expense) {
       setAmount(String(expense.amount ?? ''))
-      setCurrency(expense.currency_code ?? 'USD')
-      setDesc(expense.description ?? '')
+      setCurrency(expense.currency ?? 'USD')
+      setTitle(expense.title ?? '')
       setCategory(expense.category ?? 'Other')
-      setDate(expense.date ?? TODAY)
+      setDate(expense.expense_date?.slice(0, 10) ?? TODAY)
     } else {
       setAmount('')
       setCurrency('USD')
-      setDesc('')
+      setTitle('')
       setCategory('Other')
       setDate(TODAY)
     }
@@ -39,10 +39,10 @@ export default function AddExpenseModal({ expense, isOpen, onClose, onSave, isSa
     if (!val || val <= 0) return
     onSave({
       amount: val,
-      currency_code: currency,
-      description: description.trim(),
+      currency,
+      title: title.trim(),
       category,
-      date,
+      expense_date,
     })
   }
 
@@ -103,13 +103,13 @@ export default function AddExpenseModal({ expense, isOpen, onClose, onSave, isSa
           )}
         </div>
 
-        {/* Description */}
+        {/* Title */}
         <div>
           <label className="block text-sm font-semibold text-gray-600 mb-2">תיאור</label>
           <input
             type="text"
-            value={description}
-            onChange={(e) => setDesc(e.target.value)}
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
             placeholder="מה קנינו?"
             className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:outline-none"
           />
@@ -133,7 +133,7 @@ export default function AddExpenseModal({ expense, isOpen, onClose, onSave, isSa
             <label className="block text-sm font-semibold text-gray-600 mb-2">תאריך</label>
             <input
               type="date"
-              value={date}
+              value={expense_date}
               onChange={(e) => setDate(e.target.value)}
               className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:outline-none"
               dir="ltr"

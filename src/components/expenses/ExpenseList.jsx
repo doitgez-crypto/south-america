@@ -21,7 +21,7 @@ export default function ExpenseList({ expenses, onEdit, onDelete }) {
   // Group by date (descending)
   const groups = {}
   expenses.forEach((e) => {
-    const key = e.date ?? e.created_at?.slice(0, 10) ?? 'unknown'
+    const key = e.expense_date?.slice(0, 10) ?? e.created_at?.slice(0, 10) ?? 'unknown'
     if (!groups[key]) groups[key] = []
     groups[key].push(e)
   })
