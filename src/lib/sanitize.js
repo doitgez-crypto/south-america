@@ -1,4 +1,5 @@
 import DOMPurify from 'dompurify'
+import { COUNTRIES } from './constants'
 
 /**
  * Sanitize a plain-text string — strips all HTML tags.
@@ -35,12 +36,35 @@ export function sanitizeLinks(links) {
 
 /**
  * Sanitize an entire attraction form payload before saving.
+ * Only includes optional fields (country, external_links) when explicitly provided,
+ * so partial PATCH calls don't overwrite unrelated columns.
  */
 export function sanitizeAttractionPayload(payload) {
-  return {
-    ...payload,
+  const { country, external_links, ...rest } = payload
+
+  const result = {
+    ...rest,
     name: sanitizeText(payload.name),
     description: sanitizeText(payload.description),
-    external_links: sanitizeLinks(payload.external_links),
   }
+
+  // rating=0 means "no rating" — DB CHECK requires rating >= 1 so send null to clear it
+  if (result.rating !== undefined) {
+    result.rating = result.rating > 0 ? result.rating : null
+  }
+
+  // Only send country when it's a valid DB enum value
+  if (country !== undefined) {
+    if (COUNTRIES.includes(country)) {
+      result.country = country
+    }
+    // Invalid/unknown country value — omit from PATCH to avoid enum violation
+  }
+
+  // Only send links when explicitly included in the payload
+  if (external_links !== undefined) {
+    result.links = sanitizeLinks(external_links)
+  }
+
+  return result
 }

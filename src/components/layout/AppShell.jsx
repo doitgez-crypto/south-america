@@ -33,9 +33,17 @@ export default function AppShell() {
   }
 
   const handleSaveAttraction = (payload) => {
-    setIsAddModalOpen(false)
-    setAddModalData(null)
-    createAttraction({ payload, userId: user.id })
+    createAttraction(
+      { payload, userId: user.id },
+      {
+        onSettled: () => {
+          // Always close modal & clear data — even on failure
+          // (the error toast from the hook is enough feedback)
+          setIsAddModalOpen(false)
+          setAddModalData(null)
+        },
+      }
+    )
   }
 
   return (

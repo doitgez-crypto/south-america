@@ -22,7 +22,10 @@ export default function DocumentsTab() {
 
   const { 
     documents, 
-    isLoading, 
+    isLoading,
+    isError,
+    error,
+    refetch,
     uploadDocument, 
     isUploading, 
     deleteDocument 
@@ -45,6 +48,28 @@ export default function DocumentsTab() {
   const getDocIcon = (type) => {
     if (type === 'pdf') return <FileBadge size={24} className="text-red-500" />
     return <Camera size={24} className="text-blue-500" />
+  }
+
+  if (isError) {
+    return (
+      <div className="h-full flex flex-col items-center justify-center bg-gray-50 text-center p-8">
+        <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mb-4 border-4 border-red-50">
+          <Globe className="text-red-500 w-10 h-10" />
+        </div>
+        <h3 className="text-xl font-bold text-gray-800 mb-2">שגיאת התחברות</h3>
+        <p className="text-gray-500 mb-6 max-w-sm">
+          {error?.message === 'Connection Timed Out. Please check your internet.' 
+            ? 'זמן הבקשה עבר. נראה שיש בעיה בחיבור לאינטרנט או שהשרת עמוס מעט.' 
+            : 'לא הצלחנו לטעון את המסמכים בשלב זה.'}
+        </p>
+        <button 
+          onClick={() => refetch()}
+          className="px-6 py-3 bg-primary-600 text-white font-bold rounded-xl shadow-lg shadow-primary-200 active:scale-95 transition-all"
+        >
+          נסה שוב
+        </button>
+      </div>
+    )
   }
 
   if (isLoading) {

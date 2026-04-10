@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { CATEGORIES, CATEGORY_ICONS, CATEGORY_LABELS_HE } from '../../lib/constants'
+import { CATEGORIES, CATEGORY_ICONS, CATEGORY_LABELS_HE, COUNTRIES } from '../../lib/constants'
 import { useImageUpload } from '../../hooks/useImageUpload'
 import { Loader2, Plus, X, Globe, DollarSign, Image as ImageIcon } from 'lucide-react'
 import SearchBar from './SearchBar'
@@ -28,8 +28,27 @@ export default function AddAttractionModal({
   // Location state
   const [coords, setCoords] = useState(null)
   const [coordsLabel, setCoordsLabel] = useState('')
+  const [country, setCountry] = useState('')
   
   const { uploadImages, uploading } = useImageUpload()
+
+  // Reverse geocode when coords arrive without a country (e.g. map tap)
+  useEffect(() => {
+    const c = initialData?.coordinates
+    if (!c?.lat || !c?.lng || initialData?.country) return
+    fetch(
+      `https://nominatim.openstreetmap.org/reverse?lat=${c.lat}&lon=${c.lng}&format=json&addressdetails=1`,
+      { headers: { 'Accept-Language': 'en', 'User-Agent': 'SouthAmericaTravelPlanner/1.0' } }
+    )
+      .then(r => r.json())
+      .then(d => {
+        const name = d.address?.country
+        if (!name) return
+        const matched = COUNTRIES.find(cn => cn.toLowerCase() === name.toLowerCase())
+        setCountry(matched || name)
+      })
+      .catch(() => {})
+  }, [initialData])
 
   useEffect(() => {
     if (initialData) {
@@ -38,9 +57,10 @@ export default function AddAttractionModal({
       setPrice(initialData.price ? String(initialData.price) : '')
       setLinks(initialData.external_links?.length ? initialData.external_links : [''])
       setImages(initialData.image_urls || [])
-      
+
       setCoords(initialData.coordinates || null)
       setCoordsLabel(initialData.description || initialData.name || '')
+      setCountry(initialData.country || '')
       
       if (initialData.category) {
         if (CATEGORIES.includes(initialData.category)) {
@@ -62,6 +82,7 @@ export default function AddAttractionModal({
       setIsCustom(false)
       setCoords(null)
       setCoordsLabel('')
+      setCountry('')
     }
   }, [initialData, isOpen])
 
@@ -78,8 +99,17 @@ export default function AddAttractionModal({
   const handleImageChange = async (e) => {
     const files = Array.from(e.target.files || [])
     if (!files.length) return
-    const uploadedUrls = await uploadImages(files, 'temp-uploads')
-    setImages([...images, ...uploadedUrls])
+    try {
+      const uploadedUrls = await uploadImages(files, 'temp-uploads')
+      if (uploadedUrls.length > 0) {
+        setImages(prev => [...prev, ...uploadedUrls])
+      }
+    } catch (err) {
+      console.error('handleImageChange failed:', err)
+      // toast is already shown by useImageUpload hook
+    }
+    // Reset file input so the same file can be re-selected
+    e.target.value = ''
   }
 
   const handleSubmit = async (e) => {
@@ -104,7 +134,7 @@ export default function AddAttractionModal({
       price_local: price ? parseFloat(price) : null,
       external_links: finalLinks,
       image_urls: images,
-      country: initialData?.country || 'Argentina',
+      country,
       coordinates: coords,
     })
   }
@@ -112,6 +142,10 @@ export default function AddAttractionModal({
   const handleLocationSelect = (item) => {
     setCoords({ lat: item.lat, lng: item.lng })
     setCoordsLabel(item.label)
+    if (item.country) {
+      const matched = COUNTRIES.find(c => c.toLowerCase() === item.country.toLowerCase())
+      setCountry(matched || item.country)
+    }
     if (!name) setName(item.label.split(',')[0])
   }
 

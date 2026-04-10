@@ -35,10 +35,11 @@ export default function SearchBar({ onLocationSelect }) {
           format: 'json',
           limit: '5',
           countrycodes: 'ar,br,cl,pe,bo,co,ec',
+          addressdetails: '1',
         })
         const res = await fetch(
           `https://nominatim.openstreetmap.org/search?${params}`,
-          { headers: { 'User-Agent': 'SouthAmericaTravelPlanner/1.0' } }
+          { headers: { 'Accept-Language': 'en', 'User-Agent': 'SouthAmericaTravelPlanner/1.0' } }
         )
         const data = await res.json()
         setResults(data)
@@ -56,6 +57,7 @@ export default function SearchBar({ onLocationSelect }) {
       lat: parseFloat(item.lat),
       lng: parseFloat(item.lon),
       label: item.display_name,
+      country: item.address?.country || '',
     })
     setQuery(item.display_name.split(',')[0])
     setDropdown(false)

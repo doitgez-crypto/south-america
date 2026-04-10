@@ -83,14 +83,6 @@ function MapInner({ attractions, pendingPin, onMapClick, onMapReady, onAttractio
         icon: createCategoryIcon(attraction.category),
       })
 
-      marker.bindPopup(`
-        <div style="direction:rtl;text-align:right;min-width:160px">
-          <strong style="font-size:14px">${attraction.name}</strong>
-          <div style="margin-top:4px;font-size:12px;color:#666">${attraction.country ?? ''}</div>
-          ${attraction.rating ? `<div style="margin-top:4px">★`.repeat(attraction.rating) + `</div>` : ''}
-        </div>
-      `)
-
       marker.on('click', () => onAttractionClick(attraction))
       cluster.addLayer(marker)
       markersMapRef.current[attraction.id] = marker

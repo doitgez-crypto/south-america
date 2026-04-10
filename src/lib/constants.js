@@ -46,13 +46,17 @@ export const CATEGORY_LABELS_HE = {
 
 /** Filter chips shown in Map + List tabs */
 export const FILTER_CHIPS = [
-  { value: 'all',      label: 'הכל' },
-  { value: 'Food',     label: 'אוכל' },
-  { value: 'Lodging',  label: 'לינה' },
-  { value: 'Trek',     label: 'טיול רגלי' },
-  { value: 'Transport',label: 'תחבורה' },
-  { value: 'Viewpoint',label: 'תצפית' },
-  { value: 'Border',   label: 'מעבר גבול' },
+  { value: 'all',       label: 'הכל' },
+  { value: 'Food',      label: 'אוכל' },
+  { value: 'Lodging',   label: 'לינה' },
+  { value: 'Trek',      label: 'טיול רגלי' },
+  { value: 'Transport', label: 'תחבורה' },
+  { value: 'Viewpoint', label: 'תצפית' },
+  { value: 'Border',    label: 'מעבר גבול' },
+  { value: 'Must-See',  label: 'חובה לראות' },
+  { value: 'Culture',   label: 'תרבות' },
+  { value: 'Nightlife', label: 'בילויי לילה' },
+  { value: 'Logistics', label: 'לוגיסטיקה' },
 ]
 
 export const CATEGORY_COLORS = {

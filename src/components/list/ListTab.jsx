@@ -5,6 +5,7 @@ import FilterChips from '../map/FilterChips'
 import SearchInput from './SearchInput'
 import AttractionList from './AttractionList'
 import AttractionDetailModal from '../map/AttractionDetailModal'
+import SavePinModal from '../map/SavePinModal'
 
 export default function ListTab() {
   const { user, profile, activeCategory } = useAppContext()
@@ -12,6 +13,7 @@ export default function ListTab() {
 
   const [searchQuery, setSearchQuery]   = useState('')
   const [detailAttraction, setDetail]   = useState(null)
+  const [editAttraction, setEditAttraction] = useState(null)
 
   const filters = {
     ...(activeCategory !== 'all' ? { category: activeCategory } : {}),
@@ -25,6 +27,7 @@ export default function ListTab() {
     deleteAttraction,
     isUpdating,
     isDeleting,
+    deletingId,
   } = useAttractions(tripId, filters)
 
   return (
@@ -51,6 +54,8 @@ export default function ListTab() {
         attractions={attractions}
         isLoading={isLoading}
         onSelect={setDetail}
+        onEdit={setEditAttraction}
+        onDelete={(att) => deleteAttraction({ id: att.id, userId: user?.id })}
       />
 
       {/* Detail modal */}
@@ -63,6 +68,21 @@ export default function ListTab() {
         userId={user?.id}
         isUpdating={isUpdating}
         isDeleting={isDeleting}
+        deletingId={deletingId}
+      />
+
+      {/* Inline Edit sheet */}
+      <SavePinModal
+        isOpen={!!editAttraction}
+        onClose={() => setEditAttraction(null)}
+        onSave={(payload) => {
+          updateAttraction(
+            { id: editAttraction.id, payload, userId: user?.id },
+            { onSettled: () => setEditAttraction(null) }
+          )
+        }}
+        isSaving={isUpdating}
+        initialData={editAttraction}
       />
     </div>
   )

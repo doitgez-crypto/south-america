@@ -25,6 +25,7 @@ export default function MapTab() {
     deleteAttraction,
     isUpdating,
     isDeleting,
+    deletingId,
   } = useAttractions(tripId, filters)
 
   const [pendingPin, setPendingPin]           = useState(null)
@@ -39,12 +40,13 @@ export default function MapTab() {
     setIsAddModalOpen(true)
   }, [detailAttraction, setAddModalData, setIsAddModalOpen])
 
-  const handleSearchSelect = useCallback(({ lat, lng, label }) => {
+  const handleSearchSelect = useCallback(({ lat, lng, label, country }) => {
     setFlyToTarget({ lat, lng })
-    const data = { 
-      name: label.split(',')[0], 
+    const data = {
+      name: label.split(',')[0],
       coordinates: { lat, lng },
-      description: label 
+      description: label,
+      country: country || '',
     }
     setPendingPin({ lat, lng })
     setAddModalData(data)
@@ -85,6 +87,7 @@ export default function MapTab() {
         userId={user?.id}
         isUpdating={isUpdating}
         isDeleting={isDeleting}
+        deletingId={deletingId}
       />
     </div>
   )

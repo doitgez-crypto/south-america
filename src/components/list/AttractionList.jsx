@@ -3,7 +3,7 @@ import AttractionCard from './AttractionCard'
 import { EmptyState } from '../ui/EmptyState'
 import { LoadingSpinner } from '../ui/LoadingSpinner'
 
-export default function AttractionList({ attractions, isLoading, onSelect }) {
+export default function AttractionList({ attractions, isLoading, onSelect, onEdit, onDelete }) {
   if (isLoading) {
     return (
       <div className="flex-1 flex items-center justify-center py-12">
@@ -28,6 +28,8 @@ export default function AttractionList({ attractions, isLoading, onSelect }) {
           key={attraction.id}
           attraction={attraction}
           onSelect={onSelect}
+          onEdit={onEdit}
+          onDelete={onDelete}
         />
       ))}
     </div>

@@ -1,11 +1,22 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { useEffect } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { toast } from 'react-toastify'
 import { supabase } from '../lib/supabase'
 import { sanitizeAttractionPayload } from '../lib/sanitize'
 import { geocodeLocation } from '../lib/geocoding'
 
 const QUERY_KEY = 'attractions'
+const MUTATION_TIMEOUT_MS = 15_000
+
+/** Race a promise against a timeout */
+function withTimeout(promise, ms = MUTATION_TIMEOUT_MS) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('הפעולה נכשלה – חריגה מזמן ההמתנה (15 שניות)')), ms)
+    ),
+  ])
+}
 
 async function fetchAttractions(tripId) {
   if (!tripId) return []
@@ -71,11 +82,13 @@ export function useAttractions(tripId, filters = {}) {
         clean.coordinates = null
       }
 
-      const { data, error } = await supabase
-        .from('attractions')
-        .insert({ ...clean, trip_id: tripId, created_by: userId, last_edited_by: userId })
-        .select()
-        .single()
+      const { data, error } = await withTimeout(
+        supabase
+          .from('attractions')
+          .insert({ ...clean, trip_id: tripId, created_by: userId, last_edited_by: userId })
+          .select()
+          .single()
+      )
       if (error) throw error
       return data
     },
@@ -113,9 +126,9 @@ export function useAttractions(tripId, filters = {}) {
       toast.success('המקום נשמר!')
     },
     onSettled: () => {
-      // Final sync to ensure everything is correct
       queryClient.invalidateQueries({ queryKey: [QUERY_KEY, tripId] })
-    }
+      queryClient.refetchQueries({ queryKey: [QUERY_KEY, tripId], type: 'active' })
+    },
   })
 
   // ── Update ─────────────────────────────────────────────
@@ -135,13 +148,16 @@ export function useAttractions(tripId, filters = {}) {
         clean.coordinates = null
       }
 
-      const { data, error } = await supabase
-        .from('attractions')
-        .update({ ...clean, last_edited_by: userId })
-        .eq('id', id)
-        .select()
-        .single()
+      const { data, error } = await withTimeout(
+        supabase
+          .from('attractions')
+          .update({ ...clean, last_edited_by: userId })
+          .eq('id', id)
+          .select()
+          .single()
+      )
       if (error) throw error
+      if (!data) throw new Error('העדכון נכשל – לא נמצאה שורה לעדכון')
       return data
     },
     onMutate: async ({ id, payload }) => {
@@ -157,32 +173,64 @@ export function useAttractions(tripId, filters = {}) {
       toast.error('עדכון נכשל. השינויים בוטלו.')
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEY, tripId] })
       toast.success('המיקום עודכן!')
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEY, tripId] })
+      queryClient.refetchQueries({ queryKey: [QUERY_KEY, tripId], type: 'active' })
     },
   })
 
   // ── Delete (soft) ──────────────────────────────────────
+  const [deletingId, setDeletingId] = useState(null)
+
   const deleteMutation = useMutation({
-    mutationFn: async (id) => {
-      const { error } = await supabase
-        .from('attractions')
-        .update({ is_deleted: true })
-        .eq('id', id)
-      if (error) throw error
+    mutationFn: async ({ id, userId }) => {
+      const { error } = await withTimeout(
+        supabase
+          .from('attractions')
+          .update({ is_deleted: true, last_edited_by: userId })
+          .eq('id', id)
+      )
+      if (error) {
+        // Detect 403 / RLS permission errors
+        if (error.code === '42501' || error.message?.includes('policy') || error.message?.includes('permission')) {
+          throw new Error('שגיאת הרשאות: וודא שאתה מחובר לטיול הנכון')
+        }
+        throw error
+      }
     },
-    onMutate: async (id) => {
+    onMutate: async ({ id }) => {
+      setDeletingId(id)
       await queryClient.cancelQueries({ queryKey: [QUERY_KEY, tripId] })
       const previous = queryClient.getQueryData([QUERY_KEY, tripId])
       queryClient.setQueryData([QUERY_KEY, tripId], (old = []) => old.filter((a) => a.id !== id))
       return { previous }
     },
-    onError: (_err, _vars, context) => {
+    onError: (err, _vars, context) => {
       queryClient.setQueryData([QUERY_KEY, tripId], context.previous)
-      toast.error('מחיקה נכשלה.')
+      toast.error(err.message || 'מחיקה נכשלה.')
     },
     onSuccess: () => toast.success('המיקום נמחק.'),
+    onSettled: () => {
+      setDeletingId(null)
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEY, tripId] })
+      queryClient.refetchQueries({ queryKey: [QUERY_KEY, tripId], type: 'active' })
+    },
   })
+
+  // Wrapped deleteAttraction that accepts per-call callbacks
+  const deleteAttraction = useCallback((vars, callbacks = {}) => {
+    deleteMutation.mutate(vars, {
+      ...callbacks,
+      onSettled: (...args) => {
+        setDeletingId(null)
+        queryClient.invalidateQueries({ queryKey: [QUERY_KEY, tripId] })
+        queryClient.refetchQueries({ queryKey: [QUERY_KEY, tripId], type: 'active' })
+        callbacks.onSettled?.(...args)
+      },
+    })
+  }, [deleteMutation, queryClient, tripId])
 
   // ── Client-side filtering ──────────────────────────────
   const attractions = (query.data ?? []).filter((a) => {
@@ -205,9 +253,10 @@ export function useAttractions(tripId, filters = {}) {
     error: query.error,
     createAttraction: createMutation.mutate,
     updateAttraction: updateMutation.mutate,
-    deleteAttraction: deleteMutation.mutate,
+    deleteAttraction,
     isCreating: createMutation.isPending,
     isUpdating: updateMutation.isPending,
     isDeleting: deleteMutation.isPending,
+    deletingId,
   }
 }

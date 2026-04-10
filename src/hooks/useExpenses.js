@@ -1,9 +1,20 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { useEffect } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { toast } from 'react-toastify'
 import { supabase } from '../lib/supabase'
 
 const QUERY_KEY = 'expenses'
+const MUTATION_TIMEOUT_MS = 15_000
+
+/** Race a promise against a timeout */
+function withTimeout(promise, ms = MUTATION_TIMEOUT_MS) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('הפעולה נכשלה – חריגה מזמן ההמתנה (15 שניות)')), ms)
+    ),
+  ])
+}
 
 async function fetchExpenses(tripId) {
   if (!tripId) return []
@@ -22,7 +33,7 @@ async function fetchExpenses(tripId) {
  * @param {string} tripId
  * @param {{ blueRate: number, useBlueRate: boolean }} options
  */
-export function useExpenses(tripId, { blueRate = 1000, useBlueRate = false } = {}) {
+export function useExpenses(tripId, _options = {}) {
   const queryClient = useQueryClient()
   // ── Fetch ──────────────────────────────────────────────
   const query = useQuery({
@@ -49,21 +60,23 @@ export function useExpenses(tripId, { blueRate = 1000, useBlueRate = false } = {
 
   // ── Create ─────────────────────────────────────────────
   const createMutation = useMutation({
-    mutationFn: async ({ payload, userId }) => {
+    mutationFn: async ({ payload }) => {
       const { amount, currency, title, category, expense_date } = payload
 
-      const { data, error } = await supabase
-        .from('expenses')
-        .insert({
-          trip_id: tripId,
-          amount,
-          currency,
-          title: title ?? '',
-          category: category ?? 'Other',
-          expense_date: expense_date ?? new Date().toISOString().slice(0, 10),
-        })
-        .select()
-        .single()
+      const { data, error } = await withTimeout(
+        supabase
+          .from('expenses')
+          .insert({
+            trip_id: tripId,
+            amount,
+            currency,
+            title: title ?? '',
+            category: category ?? 'Other',
+            expense_date: expense_date ?? new Date().toISOString().slice(0, 10),
+          })
+          .select()
+          .single()
+      )
       if (error) throw error
       return data
     },
@@ -85,8 +98,11 @@ export function useExpenses(tripId, { blueRate = 1000, useBlueRate = false } = {
       toast.error('נכשל בשמירת ההוצאה. השינויים בוטלו.')
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEY, tripId] })
       toast.success('ההוצאה נשמרה!')
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEY, tripId] })
+      queryClient.refetchQueries({ queryKey: [QUERY_KEY, tripId], type: 'active' })
     },
   })
 
@@ -96,12 +112,14 @@ export function useExpenses(tripId, { blueRate = 1000, useBlueRate = false } = {
       const { amount, currency, title, category, expense_date } = payload
       const updateData = { amount, currency, title, category, expense_date }
 
-      const { data, error } = await supabase
-        .from('expenses')
-        .update(updateData)
-        .eq('id', id)
-        .select()
-        .single()
+      const { data, error } = await withTimeout(
+        supabase
+          .from('expenses')
+          .update(updateData)
+          .eq('id', id)
+          .select()
+          .single()
+      )
       if (error) throw error
       return data
     },
@@ -118,32 +136,59 @@ export function useExpenses(tripId, { blueRate = 1000, useBlueRate = false } = {
       toast.error('עדכון נכשל. השינויים בוטלו.')
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEY, tripId] })
       toast.success('ההוצאה עודכנה!')
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEY, tripId] })
     },
   })
 
   // ── Delete (soft) ──────────────────────────────────────
+  const [deletingId, setDeletingId] = useState(null)
+
   const deleteMutation = useMutation({
     mutationFn: async (id) => {
-      const { error } = await supabase
-        .from('expenses')
-        .update({ is_deleted: true })
-        .eq('id', id)
-      if (error) throw error
+      const { error } = await withTimeout(
+        supabase
+          .from('expenses')
+          .update({ is_deleted: true })
+          .eq('id', id)
+      )
+      if (error) {
+        if (error.code === '42501' || error.message?.includes('policy') || error.message?.includes('permission')) {
+          throw new Error('שגיאת הרשאות: וודא שאתה מחובר לטיול הנכון')
+        }
+        throw error
+      }
     },
     onMutate: async (id) => {
+      setDeletingId(id)
       await queryClient.cancelQueries({ queryKey: [QUERY_KEY, tripId] })
       const previous = queryClient.getQueryData([QUERY_KEY, tripId])
       queryClient.setQueryData([QUERY_KEY, tripId], (old = []) => old.filter((e) => e.id !== id))
       return { previous }
     },
-    onError: (_err, _vars, context) => {
+    onError: (err, _vars, context) => {
       queryClient.setQueryData([QUERY_KEY, tripId], context.previous)
-      toast.error('מחיקה נכשלה.')
+      toast.error(err.message || 'מחיקה נכשלה.')
     },
     onSuccess: () => toast.success('ההוצאה נמחקה.'),
+    onSettled: () => {
+      setDeletingId(null)
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEY, tripId] })
+    },
   })
+
+  const deleteExpense = useCallback((id, callbacks = {}) => {
+    deleteMutation.mutate(id, {
+      ...callbacks,
+      onSettled: (...args) => {
+        setDeletingId(null)
+        queryClient.invalidateQueries({ queryKey: [QUERY_KEY, tripId] })
+        callbacks.onSettled?.(...args)
+      },
+    })
+  }, [deleteMutation, queryClient, tripId])
 
   return {
     expenses: query.data ?? [],
@@ -152,9 +197,10 @@ export function useExpenses(tripId, { blueRate = 1000, useBlueRate = false } = {
     error: query.error,
     createExpense: createMutation.mutate,
     updateExpense: updateMutation.mutate,
-    deleteExpense: deleteMutation.mutate,
+    deleteExpense,
     isCreating: createMutation.isPending,
     isUpdating: updateMutation.isPending,
     isDeleting: deleteMutation.isPending,
+    deletingId,
   }
 }

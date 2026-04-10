@@ -22,14 +22,14 @@ export default function ExpensesTab() {
       updateExpense(
         { id: editingExpense.id, payload },
         {
-          onSuccess: () => { setEditing(null); setAddOpen(false) },
+          onSettled: () => { setEditing(null); setAddOpen(false) },
         }
       )
     } else {
       createExpense(
         { payload, userId: user.id },
         {
-          onSuccess: () => setAddOpen(false),
+          onSettled: () => setAddOpen(false),
         }
       )
     }

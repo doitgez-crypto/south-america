@@ -11,22 +11,42 @@ export function useDocuments(tripId) {
   const { addToQueue } = useUploadQueue()
 
   // --- Fetch ---
-  const { data: documents = [], isLoading } = useQuery({
+  const query = useQuery({
     queryKey: [QUERY_KEY, tripId],
     queryFn: async () => {
       if (!tripId) return []
-      const { data, error } = await supabase
-        .from('documents')
-        .select('*')
-        .eq('trip_id', tripId)
-        .eq('is_deleted', false)
-        .order('created_at', { ascending: false })
-      
-      if (error) throw error
-      return data
+
+      const abortController = new AbortController()
+      const timeoutId = setTimeout(() => abortController.abort(), 10000)
+
+      try {
+        const { data, error } = await supabase
+          .from('documents')
+          .select('*')
+          .eq('trip_id', tripId)
+          .eq('is_deleted', false)
+          .order('created_at', { ascending: false })
+          .abortSignal(abortController.signal)
+        
+        if (error) throw error
+        return data
+      } catch (err) {
+        if (err.name === 'AbortError' || err.message?.includes('AbortError') || abortController.signal.aborted) {
+          throw new Error('Connection Timed Out. Please check your internet.')
+        }
+        throw err
+      } finally {
+        clearTimeout(timeoutId)
+      }
     },
     enabled: !!tripId,
   })
+
+  const documents = query.data || []
+  const isLoading = query.isLoading
+  const isError = query.isError
+  const error = query.error
+  const refetch = query.refetch
 
   // --- Upload ---
   const uploadMutation = useMutation({
@@ -137,6 +157,9 @@ export function useDocuments(tripId) {
   return {
     documents,
     isLoading,
+    isError,
+    error,
+    refetch,
     uploadDocument: uploadMutation.mutate,
     isUploading: uploadMutation.isPending,
     deleteDocument: deleteMutation.mutate,
