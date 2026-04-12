@@ -3,6 +3,7 @@ import CategoryBadge from '../ui/CategoryBadge'
 import StarRating from '../ui/StarRating'
 import { CURRENCY_SYMBOLS } from '../../lib/constants'
 import { Pencil, Trash2 } from 'lucide-react'
+import { formatDistance } from '../../lib/distance'
 
 const COUNTRY_FLAGS = {
   Argentina: '🇦🇷', Brazil: '🇧🇷', Chile: '🇨🇱',
@@ -69,6 +70,9 @@ export default function AttractionCard({ attraction, onSelect, onEdit, onDelete 
             <span className="text-sm">{COUNTRY_FLAGS[country] ?? '🌍'}</span>
             <span className="text-xs text-gray-500">{country || 'מיקום לא ידוע'}</span>
             <CategoryBadge category={category} />
+            {attraction.distance != null && (
+              <span className="text-xs text-primary-500">📍 {formatDistance(attraction.distance)}</span>
+            )}
           </div>
           <div className="flex items-center justify-between mt-1">
             {rating > 0 && <StarRating value={rating} readOnly max={5} />}

@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { useAppContext } from '../../context/AppContext'
 import { useAttractions } from '../../hooks/useAttractions'
+import { useUserLocation } from '../../hooks/useUserLocation'
 import FilterChips from '../map/FilterChips'
 import SearchInput from './SearchInput'
 import AttractionList from './AttractionList'
@@ -15,6 +16,8 @@ export default function ListTab() {
   const [detailAttraction, setDetail]   = useState(null)
   const [editAttraction, setEditAttraction] = useState(null)
 
+  const { coords: userCoords } = useUserLocation()
+
   const filters = {
     ...(activeCategory !== 'all' ? { category: activeCategory } : {}),
     ...(searchQuery ? { search: searchQuery } : {}),
@@ -28,7 +31,7 @@ export default function ListTab() {
     isUpdating,
     isDeleting,
     deletingId,
-  } = useAttractions(tripId, filters)
+  } = useAttractions(tripId, filters, userCoords)
 
   return (
     <div className="flex flex-col h-full bg-gray-50">

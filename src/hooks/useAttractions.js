@@ -4,6 +4,7 @@ import { toast } from 'react-toastify'
 import { supabase } from '../lib/supabase'
 import { sanitizeAttractionPayload } from '../lib/sanitize'
 import { geocodeLocation } from '../lib/geocoding'
+import { haversineKm } from '../lib/distance'
 
 const QUERY_KEY = 'attractions'
 const MUTATION_TIMEOUT_MS = 15_000
@@ -30,7 +31,7 @@ async function fetchAttractions(tripId) {
   return data
 }
 
-export function useAttractions(tripId, filters = {}) {
+export function useAttractions(tripId, filters = {}, userCoords = null) {
   const queryClient = useQueryClient()
 
   // ── Fetch ──────────────────────────────────────────────
@@ -156,7 +157,16 @@ export function useAttractions(tripId, filters = {}) {
           .select()
           .single()
       )
-      if (error) throw error
+      if (error) {
+        console.error('[updateAttraction] Supabase error:', {
+          code: error.code,
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          payload: clean,
+        })
+        throw error
+      }
       if (!data) throw new Error('העדכון נכשל – לא נמצאה שורה לעדכון')
       return data
     },
@@ -232,18 +242,29 @@ export function useAttractions(tripId, filters = {}) {
     })
   }, [deleteMutation, queryClient, tripId])
 
-  // ── Client-side filtering ──────────────────────────────
-  const attractions = (query.data ?? []).filter((a) => {
-    if (filters.country  && a.country  !== filters.country)       return false
-    if (filters.category && a.category !== filters.category)      return false
-    if (filters.rating   && a.rating   < Number(filters.rating))  return false
-    if (filters.search) {
-      const q = filters.search.toLowerCase()
-      if (!a.name.toLowerCase().includes(q) && !a.description?.toLowerCase().includes(q))
-        return false
-    }
-    return true
-  })
+  // ── Client-side filtering + distance annotation ───────
+  const attractions = (query.data ?? [])
+    .filter((a) => {
+      if (filters.country  && a.country  !== filters.country)       return false
+      if (filters.category && a.category !== filters.category)      return false
+      if (filters.rating   && a.rating   < Number(filters.rating))  return false
+      if (filters.search) {
+        const q = filters.search.toLowerCase()
+        if (!a.name.toLowerCase().includes(q) && !a.description?.toLowerCase().includes(q))
+          return false
+      }
+      return true
+    })
+    .map((a) => {
+      if (userCoords && a.coordinates?.lat != null && a.coordinates?.lng != null) {
+        return { ...a, distance: haversineKm(userCoords.lat, userCoords.lng, a.coordinates.lat, a.coordinates.lng) }
+      }
+      return a
+    })
+    .sort((a, b) => {
+      if (a.distance != null && b.distance != null) return a.distance - b.distance
+      return 0
+    })
 
   return {
     attractions,

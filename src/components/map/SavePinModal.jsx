@@ -7,7 +7,7 @@ import { useAppContext } from '../../context/AppContext'
 import { useCategories } from '../../hooks/useCategories'
 import { useImageUpload } from '../../hooks/useImageUpload'
 
-export default function SavePinModal({ pin, isOpen, onClose, onSave, isSaving, initialData }) {
+export default function SavePinModal({ pin, isOpen, onClose, onSave, isSaving, initialData, zIndex }) {
   const { profile } = useAppContext()
   const { categories: dbCategories, createCategory } = useCategories(profile?.trip_id)
   const { uploadImages, uploading: uploadingImages } = useImageUpload()
@@ -19,10 +19,11 @@ export default function SavePinModal({ pin, isOpen, onClose, onSave, isSaving, i
   const [country, setCountry]     = useState('')
   const [description, setDesc]    = useState('')
   const [rating, setRating]       = useState(0)
-  const [priceLocal, setPriceLocal]   = useState('')
-  const [currencyCode, setCurrencyCode] = useState('USD')
-  const [links, setLinks]         = useState('')
-  const [images, setImages]       = useState([])
+  const [priceLocal, setPriceLocal]       = useState('')
+  const [currencyCode, setCurrencyCode]   = useState('USD')
+  const [links, setLinks]               = useState('')
+  const [images, setImages]             = useState([])
+  const [extraCategories, setExtraCategories] = useState([])
 
   // ── Reverse geocode from pin coordinates ────────────────
   useEffect(() => {
@@ -59,6 +60,7 @@ export default function SavePinModal({ pin, isOpen, onClose, onSave, isSaving, i
       setCurrencyCode(initialData.currency_code ?? 'USD')
       setLinks(Array.isArray(initialData.links) ? initialData.links.join('\n') : '')
       setImages(Array.isArray(initialData.image_urls) ? initialData.image_urls : [])
+      setExtraCategories(Array.isArray(initialData.extra_categories) ? initialData.extra_categories : [])
 
       if (initialData.category) {
         const isBuiltIn = CATEGORIES.includes(initialData.category)
@@ -87,6 +89,7 @@ export default function SavePinModal({ pin, isOpen, onClose, onSave, isSaving, i
       setCurrencyCode('USD')
       setLinks('')
       setImages([])
+      setExtraCategories([])
     }
   }, [initialData, isOpen, dbCategories])
 
@@ -129,6 +132,7 @@ export default function SavePinModal({ pin, isOpen, onClose, onSave, isSaving, i
       currency_code: priceLocal !== '' ? currencyCode : null,
       external_links: linksList,
       image_urls: images,
+      extra_categories: extraCategories,
     })
   }
 
@@ -137,6 +141,7 @@ export default function SavePinModal({ pin, isOpen, onClose, onSave, isSaving, i
       isOpen={isOpen}
       onClose={onClose}
       title={initialData ? 'ערוך מיקום' : 'שמור מיקום'}
+      zIndex={zIndex}
     >
       <form onSubmit={handleSubmit} className="p-5 space-y-4">
         {/* Name */}
@@ -194,6 +199,36 @@ export default function SavePinModal({ pin, isOpen, onClose, onSave, isSaving, i
               </p>
             </div>
           )}
+
+          {/* Extra category tags */}
+          <div>
+            <p className="text-xs text-gray-500 mb-1.5">תגיות נוספות (אופציונלי)</p>
+            <div className="flex flex-wrap gap-1.5">
+              {[...CATEGORIES, ...dbCategories.map(c => c.name)]
+                .filter(c => c !== (isCustom ? customCategory : category))
+                .map(c => {
+                  const active = extraCategories.includes(c)
+                  return (
+                    <button
+                      key={c}
+                      type="button"
+                      onClick={() =>
+                        setExtraCategories(prev =>
+                          active ? prev.filter(x => x !== c) : [...prev, c]
+                        )
+                      }
+                      className={`px-3 py-1 rounded-full text-xs border transition-all ${
+                        active
+                          ? 'bg-primary-500 text-white border-primary-500'
+                          : 'bg-white text-gray-600 border-gray-200 hover:border-primary-300'
+                      }`}
+                    >
+                      {CATEGORY_LABELS_HE[c] || c}
+                    </button>
+                  )
+                })}
+            </div>
+          </div>
         </div>
 
         {/* Country */}

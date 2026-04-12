@@ -6,8 +6,8 @@ import { useUploadQueue } from './useUploadQueue'
 
 const BUCKET = 'attraction-images'
 const COMPRESSION_OPTIONS = {
-  maxSizeMB: 0.8,
-  maxWidthOrHeight: 1280,
+  maxSizeMB: 0.1,
+  maxWidthOrHeight: 1024,
   useWebWorker: true,
   onProgress: () => {},
 }

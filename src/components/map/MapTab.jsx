@@ -1,6 +1,7 @@
 import React, { useState, useCallback } from 'react'
 import { useAppContext } from '../../context/AppContext'
 import { useAttractions } from '../../hooks/useAttractions'
+import { useUserLocation } from '../../hooks/useUserLocation'
 import MapView from './MapView'
 import SearchBar from './SearchBar'
 import FilterChips from './FilterChips'
@@ -8,14 +9,16 @@ import SavePinModal from './SavePinModal'
 import AttractionDetailModal from './AttractionDetailModal'
 
 export default function MapTab() {
-  const { 
-    user, 
-    profile, 
-    activeCategory, 
-    setIsAddModalOpen, 
-    setAddModalData 
+  const {
+    user,
+    profile,
+    activeCategory,
+    setIsAddModalOpen,
+    setAddModalData
   } = useAppContext()
   const tripId = profile?.trip_id
+
+  const { coords: userCoords } = useUserLocation()
 
   const filters = activeCategory !== 'all' ? { category: activeCategory } : {}
   const {
@@ -26,7 +29,7 @@ export default function MapTab() {
     isUpdating,
     isDeleting,
     deletingId,
-  } = useAttractions(tripId, filters)
+  } = useAttractions(tripId, filters, userCoords)
 
   const [pendingPin, setPendingPin]           = useState(null)
   const [detailAttraction, setDetail]         = useState(null)

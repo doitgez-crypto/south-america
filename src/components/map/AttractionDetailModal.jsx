@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react'
-import { Pencil, Trash2, ExternalLink, X } from 'lucide-react'
+import { Pencil, Trash2, ExternalLink, X, MapPin } from 'lucide-react'
 import CategoryBadge from '../ui/CategoryBadge'
 import StarRating from '../ui/StarRating'
+import { formatDistance } from '../../lib/distance'
 import SavePinModal from './SavePinModal'
 import { CURRENCY_SYMBOLS } from '../../lib/constants'
 
@@ -32,8 +33,9 @@ export default function AttractionDetailModal({
   if (!isOpen || !attraction) return null
 
   const { name, country, category, description, rating, price_local, currency_code } = attraction
-  const external_links = attraction.links || []
-  const image_urls     = attraction.image_urls     || []
+  const external_links    = attraction.links || []
+  const image_urls        = attraction.image_urls || []
+  const extra_categories  = attraction.extra_categories || []
 
   const handleDelete = () => {
     deleteAttraction({ id: attraction.id, userId }, {
@@ -111,13 +113,36 @@ export default function AttractionDetailModal({
           <div className="p-5 space-y-5">
             {/* Country + Category + Rating row */}
             <div className="space-y-2">
-              <p className="text-sm text-gray-500">
-                {country || 'מיקום לא ידוע'}
-              </p>
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <p className="text-sm text-gray-500">
+                  {country || 'מיקום לא ידוע'}
+                </p>
+                {attraction.distance != null && (
+                  <span className="text-xs text-primary-600 font-medium">
+                    📍 {formatDistance(attraction.distance)} ממך
+                  </span>
+                )}
+              </div>
               <div className="flex items-center gap-3 flex-wrap">
                 <CategoryBadge category={category} />
+                {extra_categories.map(c => (
+                  <CategoryBadge key={c} category={c} />
+                ))}
                 {rating > 0 && <StarRating value={rating} readOnly />}
               </div>
+
+              {/* Google Maps link */}
+              {attraction.coordinates?.lat != null && (
+                <a
+                  href={`https://www.google.com/maps/search/?api=1&query=${attraction.coordinates.lat},${attraction.coordinates.lng}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1 text-xs text-primary-600 hover:underline w-fit"
+                >
+                  <MapPin size={12} />
+                  פתח בגוגל מפות
+                </a>
+              )}
             </div>
 
             {/* Description */}
@@ -224,6 +249,7 @@ export default function AttractionDetailModal({
         onSave={handleSaveEdit}
         isSaving={isUpdating}
         initialData={attraction}
+        zIndex={10000}
       />
     </>
   )

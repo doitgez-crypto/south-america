@@ -4,7 +4,7 @@ import React, { useEffect } from 'react'
  * Reusable bottom-sheet modal.
  * Props: { isOpen, onClose, title, children, maxHeight }
  */
-export default function BottomSheet({ isOpen, onClose, title, children, maxHeight = '90vh' }) {
+export default function BottomSheet({ isOpen, onClose, title, children, maxHeight = '90vh', zIndex = 50 }) {
   // Prevent body scroll when open
   useEffect(() => {
     if (isOpen) {
@@ -19,18 +19,19 @@ export default function BottomSheet({ isOpen, onClose, title, children, maxHeigh
     <>
       {/* Backdrop */}
       <div
-        className={`fixed inset-0 z-40 bg-black/50 transition-opacity duration-300 ${
+        className={`fixed inset-0 bg-black/50 transition-opacity duration-300 ${
           isOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
         }`}
+        style={{ zIndex: zIndex - 1 }}
         onClick={onClose}
       />
 
       {/* Panel */}
       <div
-        className={`fixed inset-x-0 bottom-0 z-50 flex flex-col bg-white rounded-t-2xl shadow-2xl transition-transform duration-300 ${
+        className={`fixed inset-x-0 bottom-0 flex flex-col bg-white rounded-t-2xl shadow-2xl transition-transform duration-300 ${
           isOpen ? 'translate-y-0' : 'translate-y-full'
         }`}
-        style={{ maxHeight }}
+        style={{ maxHeight, zIndex }}
       >
         {/* Handle */}
         <div className="flex justify-center pt-3 pb-1">

@@ -36,11 +36,20 @@ export function sanitizeLinks(links) {
 
 /**
  * Sanitize an entire attraction form payload before saving.
- * Only includes optional fields (country, external_links) when explicitly provided,
- * so partial PATCH calls don't overwrite unrelated columns.
+ * Explicitly strips system/computed fields that must never appear in an
+ * UPDATE SET clause, then sanitizes the remaining user-editable fields.
  */
 export function sanitizeAttractionPayload(payload) {
-  const { country, external_links, ...rest } = payload
+  // Strip fields that are read-only, system-managed, or client-only computed
+  const {
+    id, trip_id, created_at, updated_at,  // system — controlled by DB
+    created_by,                            // system
+    is_deleted,                            // controlled separately by delete mutation
+    distance, status,                      // client-only computed values
+    country, external_links,              // handled explicitly below
+    extra_categories,
+    ...rest
+  } = payload
 
   const result = {
     ...rest,
@@ -64,6 +73,13 @@ export function sanitizeAttractionPayload(payload) {
   // Only send links when explicitly included in the payload
   if (external_links !== undefined) {
     result.links = sanitizeLinks(external_links)
+  }
+
+  // Only send extra_categories when explicitly included
+  if (extra_categories !== undefined) {
+    result.extra_categories = Array.isArray(extra_categories)
+      ? extra_categories.filter(c => typeof c === 'string' && c.trim().length > 0)
+      : []
   }
 
   return result
