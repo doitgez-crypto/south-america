@@ -77,6 +77,7 @@ export default function MapTab() {
           flyToTarget={flyToTarget}
           onMapClick={handleMapClick}
           onAttractionClick={setDetail}
+          userCoords={userCoords}
         />
       </div>
 

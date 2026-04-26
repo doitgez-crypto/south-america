@@ -31,6 +31,27 @@ function createCategoryIcon(category) {
   })
 }
 
+function createUserIcon() {
+  return L.divIcon({
+    className: '',
+    html: `<div style="
+      width:18px;height:18px;border-radius:50%;
+      background:#3b82f6;border:3px solid white;
+      box-shadow:0 0 0 6px rgba(59,130,246,0.25);
+      animation:user-pulse 2s infinite;
+    "></div>
+    <style>
+      @keyframes user-pulse {
+        0%   { box-shadow: 0 0 0 0   rgba(59,130,246,0.4); }
+        70%  { box-shadow: 0 0 0 10px rgba(59,130,246,0); }
+        100% { box-shadow: 0 0 0 0   rgba(59,130,246,0); }
+      }
+    </style>`,
+    iconSize: [18, 18],
+    iconAnchor: [9, 9],
+  })
+}
+
 function createPendingIcon() {
   return L.divIcon({
     className: '',
@@ -47,12 +68,13 @@ function createPendingIcon() {
 }
 
 /** Inner component that gets map instance and wires up events */
-function MapInner({ attractions, pendingPin, onMapClick, onMapReady, onAttractionClick }) {
+function MapInner({ attractions, pendingPin, onMapClick, onMapReady, onAttractionClick, userCoords }) {
   const map            = useMapEvents({
     click(e) { onMapClick({ lat: e.latlng.lat, lng: e.latlng.lng }) },
   })
   const clusterRef     = useRef(null)
   const pendingRef     = useRef(null)
+  const userMarkerRef  = useRef(null)
   const markersMapRef  = useRef({}) // id → L.Marker
 
   // Notify parent of map instance
@@ -103,10 +125,24 @@ function MapInner({ attractions, pendingPin, onMapClick, onMapReady, onAttractio
     }
   }, [pendingPin, map])
 
+  // User location marker
+  useEffect(() => {
+    if (userMarkerRef.current) {
+      map.removeLayer(userMarkerRef.current)
+      userMarkerRef.current = null
+    }
+    if (userCoords?.lat != null) {
+      userMarkerRef.current = L.marker([userCoords.lat, userCoords.lng], {
+        icon: createUserIcon(),
+        zIndexOffset: 2000,
+      }).addTo(map)
+    }
+  }, [userCoords, map])
+
   return null
 }
 
-export default function MapView({ attractions = [], pendingPin, onMapClick, onMapReady, onAttractionClick, flyToTarget }) {
+export default function MapView({ attractions = [], pendingPin, onMapClick, onMapReady, onAttractionClick, flyToTarget, userCoords }) {
   const mapInstanceRef = useRef(null)
 
   const handleMapReady = (map) => {
@@ -138,6 +174,7 @@ export default function MapView({ attractions = [], pendingPin, onMapClick, onMa
         onMapClick={onMapClick}
         onMapReady={handleMapReady}
         onAttractionClick={onAttractionClick ?? (() => {})}
+        userCoords={userCoords}
       />
     </MapContainer>
   )

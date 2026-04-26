@@ -1,10 +1,26 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { supabase } from '../lib/supabase'
 import { toast } from 'react-toastify'
 import { useUploadQueue } from './useUploadQueue'
+import {
+  fetchDocuments,
+  uploadDocumentFile,
+  softDeleteDocument,
+  generateDocumentPath,
+  detectFileType,
+} from '../services/document-service'
 
 const QUERY_KEY = 'documents'
 const BUCKET = 'trip-documents'
+const UPLOAD_TIMEOUT_MS = 30_000
+
+function withUploadTimeout(promise) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('העלאה נכשלה – חריגה מזמן ההמתנה (30 שניות)')), UPLOAD_TIMEOUT_MS)
+    ),
+  ])
+}
 
 export function useDocuments(tripId) {
   const queryClient = useQueryClient()
@@ -13,32 +29,7 @@ export function useDocuments(tripId) {
   // --- Fetch ---
   const query = useQuery({
     queryKey: [QUERY_KEY, tripId],
-    queryFn: async () => {
-      if (!tripId) return []
-
-      const abortController = new AbortController()
-      const timeoutId = setTimeout(() => abortController.abort(), 10000)
-
-      try {
-        const { data, error } = await supabase
-          .from('documents')
-          .select('*')
-          .eq('trip_id', tripId)
-          .eq('is_deleted', false)
-          .order('created_at', { ascending: false })
-          .abortSignal(abortController.signal)
-        
-        if (error) throw error
-        return data
-      } catch (err) {
-        if (err.name === 'AbortError' || err.message?.includes('AbortError') || abortController.signal.aborted) {
-          throw new Error('Connection Timed Out. Please check your internet.')
-        }
-        throw err
-      } finally {
-        clearTimeout(timeoutId)
-      }
-    },
+    queryFn: () => fetchDocuments(tripId),
     enabled: !!tripId,
   })
 
@@ -51,59 +42,39 @@ export function useDocuments(tripId) {
   // --- Upload ---
   const uploadMutation = useMutation({
     mutationFn: async ({ file, name, userId }) => {
-      const ext = file.name.split('.').pop()
-      const path = `${tripId}/${Date.now()}.${ext}`
-      
-      // Check online status
+      const path = generateDocumentPath(tripId, file)
+      const fileType = detectFileType(file)
+      const displayName = name || file.name
+
       if (!navigator.onLine) {
         await addToQueue({
           type: 'document',
           file,
           bucket: BUCKET,
           path,
-          metadata: {
-            trip_id: tripId,
-            uploaded_by: userId,
-            name: name || file.name,
-            file_type: file.type.includes('pdf') ? 'pdf' : 'image',
-          }
+          metadata: { trip_id: tripId, uploaded_by: userId, name: displayName, file_type: fileType },
         })
         return { queued: true }
       }
 
-      // 1. Upload to Storage
-      const { error: uploadError } = await supabase.storage
-        .from(BUCKET)
-        .upload(path, file)
-      
-      if (uploadError) {
+      try {
+        const data = await withUploadTimeout(
+          uploadDocumentFile(tripId, userId, file, displayName, path, fileType)
+        )
+        return { ...data, queued: false }
+      } catch (err) {
         if (!navigator.onLine) {
-           await addToQueue({ type: 'document', file, bucket: BUCKET, path, metadata: { trip_id: tripId, name, uploaded_by: userId, file_type: file.type.includes('pdf') ? 'pdf' : 'image' } })
-           return { queued: true }
+          await addToQueue({
+            type: 'document',
+            file,
+            bucket: BUCKET,
+            path,
+            metadata: { trip_id: tripId, uploaded_by: userId, name: displayName, file_type: fileType },
+          })
+          return { queued: true }
         }
-        throw uploadError
+        throw err
       }
-
-      // 2. Get Public URL
-      const { data: { publicUrl } } = supabase.storage
-        .from(BUCKET)
-        .getPublicUrl(path)
-
-      // 3. Save to Database
-      const { data, error: dbError } = await supabase
-        .from('documents')
-        .insert({
-          trip_id: tripId,
-          uploaded_by: userId,
-          name: name || file.name,
-          file_url: publicUrl,
-          file_type: file.type.includes('pdf') ? 'pdf' : 'image',
-        })
-        .select()
-        .single()
-
-      if (dbError) throw dbError
-      return { ...data, queued: false }
     },
     onMutate: async ({ file, name }) => {
       await queryClient.cancelQueries({ queryKey: [QUERY_KEY, tripId] })
@@ -141,17 +112,20 @@ export function useDocuments(tripId) {
 
   // --- Delete ---
   const deleteMutation = useMutation({
-    mutationFn: async (id) => {
-      const { error } = await supabase
-        .from('documents')
-        .update({ is_deleted: true })
-        .eq('id', id)
-      if (error) throw error
+    mutationFn: async ({ id, fileUrl }) => {
+      const { storageDeleted } = await softDeleteDocument(id, fileUrl)
+      if (!storageDeleted) {
+        toast.error('מחיקת הקובץ מהאחסון נכשלה — המסמך יוסר מהרשימה בכל זאת.')
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEY, tripId] })
       toast.success('המסמך נמחק.')
-    }
+    },
+    onError: (err) => {
+      console.error('[deleteDocument] DB delete failed:', err)
+      toast.error('מחיקת המסמך נכשלה.')
+    },
   })
 
   return {

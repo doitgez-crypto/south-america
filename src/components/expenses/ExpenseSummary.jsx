@@ -2,19 +2,13 @@ import React from 'react'
 import { useCurrency } from '../../hooks/useCurrency'
 import { useAppContext } from '../../context/AppContext'
 import { LoadingSpinner } from '../ui/LoadingSpinner'
+import { computeTotalUsd } from '../../services/expense-service'
 
 export default function ExpenseSummary({ expenses }) {
   const { convert, rates, loading } = useCurrency()
   const { blueRate, useBlueRate }   = useAppContext()
 
-  const computeUsd = (expense) => {
-    if (expense.currency === 'ARS' && useBlueRate && blueRate > 0) {
-      return expense.amount / blueRate
-    }
-    return convert(expense.amount, expense.currency, 'USD') ?? 0
-  }
-
-  const totalUsd = expenses.reduce((sum, e) => sum + computeUsd(e), 0)
+  const totalUsd = computeTotalUsd(expenses, blueRate, useBlueRate, convert)
   const totalIls = rates ? (convert(totalUsd, 'USD', 'ILS') ?? 0) : null
 
   return (
@@ -31,7 +25,7 @@ export default function ExpenseSummary({ expenses }) {
           <div className="w-px bg-primary-400" />
           <div className="text-center">
             <p className="text-3xl font-bold">
-              {totalIls != null ? `₪${totalIls.toFixed(0)}` : '—'}
+              {totalIls != null ? `₪${totalIls.toFixed(2)}` : '—'}
             </p>
             <p className="text-xs text-primary-200 mt-0.5">שקל</p>
           </div>

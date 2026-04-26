@@ -78,7 +78,7 @@ export function sanitizeAttractionPayload(payload) {
   // Only send extra_categories when explicitly included
   if (extra_categories !== undefined) {
     result.extra_categories = Array.isArray(extra_categories)
-      ? extra_categories.filter(c => typeof c === 'string' && c.trim().length > 0)
+      ? [...new Set(extra_categories.filter(c => typeof c === 'string' && c.trim().length > 0))]
       : []
   }
 

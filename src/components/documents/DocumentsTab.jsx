@@ -192,7 +192,7 @@ export default function DocumentsTab() {
                       <Eye size={18} />
                     </a>
                     <button 
-                      onClick={() => { if(confirm('למחוק מסמך זה?')) deleteDocument(doc.id) }}
+                      onClick={() => { if(confirm('למחוק מסמך זה?')) deleteDocument({ id: doc.id, fileUrl: doc.file_url }) }}
                       className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
                     >
                       <Trash2 size={18} />

@@ -56,5 +56,15 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     setupFiles: './src/test/setup.js',
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'json', 'html'],
+      include: ['src/lib/**', 'src/services/**'],
+      exclude: ['src/lib/supabase.js', 'src/lib/geocoding.js'],
+      thresholds: {
+        lines: 90,
+        functions: 90,
+      },
+    },
   },
 })

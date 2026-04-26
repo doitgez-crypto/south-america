@@ -11,7 +11,7 @@ const COMPRESSION_OPTIONS = {
   useWebWorker: true,
   onProgress: () => {},
 }
-const UPLOAD_TIMEOUT_MS = 15_000 // 15 seconds per file
+const UPLOAD_TIMEOUT_MS = 45_000 // 45 seconds per file (slow South America connections)
 
 /** Race a promise against a timeout */
 function withTimeout(promise, ms, label = 'Operation') {

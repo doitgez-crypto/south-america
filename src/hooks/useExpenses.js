@@ -2,6 +2,12 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useState, useCallback } from 'react'
 import { toast } from 'react-toastify'
 import { supabase } from '../lib/supabase'
+import {
+  fetchExpenses,
+  createExpenseRecord,
+  updateExpenseRecord,
+  softDeleteExpense,
+} from '../services/expense-service'
 
 const QUERY_KEY = 'expenses'
 const MUTATION_TIMEOUT_MS = 15_000
@@ -14,19 +20,6 @@ function withTimeout(promise, ms = MUTATION_TIMEOUT_MS) {
       setTimeout(() => reject(new Error('הפעולה נכשלה – חריגה מזמן ההמתנה (15 שניות)')), ms)
     ),
   ])
-}
-
-async function fetchExpenses(tripId) {
-  if (!tripId) return []
-  const { data, error } = await supabase
-    .from('expenses')
-    .select('*')
-    .eq('trip_id', tripId)
-    .eq('is_deleted', false)
-    .order('expense_date', { ascending: false })
-    .order('created_at', { ascending: false })
-  if (error) throw error
-  return data
 }
 
 /**
@@ -61,24 +54,7 @@ export function useExpenses(tripId, _options = {}) {
   // ── Create ─────────────────────────────────────────────
   const createMutation = useMutation({
     mutationFn: async ({ payload }) => {
-      const { amount, currency, title, category, expense_date } = payload
-
-      const { data, error } = await withTimeout(
-        supabase
-          .from('expenses')
-          .insert({
-            trip_id: tripId,
-            amount,
-            currency,
-            title: title ?? '',
-            category: category ?? 'Other',
-            expense_date: expense_date ?? new Date().toISOString().slice(0, 10),
-          })
-          .select()
-          .single()
-      )
-      if (error) throw error
-      return data
+      return withTimeout(createExpenseRecord(tripId, payload))
     },
     onMutate: async ({ payload }) => {
       await queryClient.cancelQueries({ queryKey: [QUERY_KEY, tripId] })
@@ -109,19 +85,7 @@ export function useExpenses(tripId, _options = {}) {
   // ── Update ─────────────────────────────────────────────
   const updateMutation = useMutation({
     mutationFn: async ({ id, payload }) => {
-      const { amount, currency, title, category, expense_date } = payload
-      const updateData = { amount, currency, title, category, expense_date }
-
-      const { data, error } = await withTimeout(
-        supabase
-          .from('expenses')
-          .update(updateData)
-          .eq('id', id)
-          .select()
-          .single()
-      )
-      if (error) throw error
-      return data
+      return withTimeout(updateExpenseRecord(id, payload))
     },
     onMutate: async ({ id, payload }) => {
       await queryClient.cancelQueries({ queryKey: [QUERY_KEY, tripId] })
@@ -148,18 +112,7 @@ export function useExpenses(tripId, _options = {}) {
 
   const deleteMutation = useMutation({
     mutationFn: async (id) => {
-      const { error } = await withTimeout(
-        supabase
-          .from('expenses')
-          .update({ is_deleted: true })
-          .eq('id', id)
-      )
-      if (error) {
-        if (error.code === '42501' || error.message?.includes('policy') || error.message?.includes('permission')) {
-          throw new Error('שגיאת הרשאות: וודא שאתה מחובר לטיול הנכון')
-        }
-        throw error
-      }
+      return withTimeout(softDeleteExpense(id))
     },
     onMutate: async (id) => {
       setDeletingId(id)

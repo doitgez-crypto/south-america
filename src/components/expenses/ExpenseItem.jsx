@@ -26,7 +26,7 @@ export default function ExpenseItem({ expense, onEdit, onDelete }) {
         {/* Amount */}
         <div className="text-left flex-shrink-0" dir="ltr">
           <p className="font-semibold text-gray-800">
-            {sym}{amount?.toLocaleString()}
+            {sym}{amount?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </p>
         </div>
 
