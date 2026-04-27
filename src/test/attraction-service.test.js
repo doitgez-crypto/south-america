@@ -97,6 +97,21 @@ describe('filterAttractions', () => {
   it('returns all attractions for empty array input', () => {
     expect(filterAttractions([], { country: 'Peru' })).toHaveLength(0)
   })
+
+  it('excludes attraction without description when search targets description only', () => {
+    const withMissing = [
+      { name: 'No Desc', country: 'Peru', category: 'Trek', rating: 5 },
+    ]
+    const result = filterAttractions(withMissing, { search: 'salt' })
+    expect(result).toHaveLength(0)
+  })
+
+  it('accepts rating filter as string (coerces to number)', () => {
+    const result = filterAttractions(attractions, { rating: '4' })
+    expect(result).toHaveLength(2)
+    expect(result.map((a) => a.name)).toContain('Machu Picchu')
+    expect(result.map((a) => a.name)).toContain('Salar de Uyuni')
+  })
 })
 
 // ── annotateWithDistance ──────────────────────────────────────────────────────
@@ -195,6 +210,13 @@ describe('createAttractionRecord', () => {
     )
   })
 
+  it('skips geocoding when payload already has coordinates', async () => {
+    const withCoords = { ...payload, coordinates: { lat: -51.0, lng: -73.0 } }
+    mocks.mockFrom.mockReturnValue(mocks.makeChain({ data: { id: 'x' }, error: null }))
+    await createAttractionRecord('trip-1', 'user-1', withCoords)
+    expect(mocks.mockGeocode).not.toHaveBeenCalled()
+  })
+
   it('proceeds without coordinates when geocoding returns null', async () => {
     mocks.mockGeocode.mockResolvedValue(null)
     const chain = mocks.makeChain({ data: { id: 'x' }, error: null })
@@ -286,6 +308,13 @@ describe('updateAttractionRecord', () => {
       updateAttractionRecord('attr-1', 'user-1', payload)
     ).rejects.toThrow('העדכון נכשל')
   })
+
+  it('skips geocoding when payload already has coordinates', async () => {
+    const withCoords = { ...payload, coordinates: { lat: -33.0, lng: -70.0 } }
+    mocks.mockFrom.mockReturnValue(mocks.makeChain({ data: { id: 'attr-1' }, error: null }))
+    await updateAttractionRecord('attr-1', 'user-1', withCoords)
+    expect(mocks.mockGeocode).not.toHaveBeenCalled()
+  })
 })
 
 // ── softDeleteAttraction ──────────────────────────────────────────────────────
@@ -322,5 +351,11 @@ describe('softDeleteAttraction', () => {
     const err = new Error('connection reset')
     mocks.mockFrom.mockReturnValue(mocks.makeChain({ error: err }))
     await expect(softDeleteAttraction('attr-1', 'user-1')).rejects.toThrow('connection reset')
+  })
+
+  it('throws a Hebrew permissions error when message contains "permission"', async () => {
+    const permErr = { code: '403', message: 'permission denied' }
+    mocks.mockFrom.mockReturnValue(mocks.makeChain({ error: permErr }))
+    await expect(softDeleteAttraction('attr-1', 'user-1')).rejects.toThrow('שגיאת הרשאות')
   })
 })

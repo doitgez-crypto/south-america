@@ -37,7 +37,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
       <AppProvider>
         <App />
       </AppProvider>
-      <ReactQueryDevtools initialIsOpen={false} />
+      {!window.Cypress && <ReactQueryDevtools initialIsOpen={false} />}
     </QueryClientProvider>
   </React.StrictMode>,
 )

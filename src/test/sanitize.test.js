@@ -214,4 +214,21 @@ describe('sanitizeAttractionPayload', () => {
     expect(result.links).toEqual(['https://example.com/'])
     expect(result).not.toHaveProperty('external_links')
   })
+
+  it('omits links key entirely when external_links is not in payload', () => {
+    const result = sanitizeAttractionPayload(base)
+    expect(result).not.toHaveProperty('links')
+    expect(result).not.toHaveProperty('external_links')
+  })
+
+  it('converts rating=null to null (null is treated as "no rating")', () => {
+    const result = sanitizeAttractionPayload({ ...base, rating: null })
+    expect(result.rating).toBeNull()
+  })
+
+  it('omits rating key entirely when rating is not in payload', () => {
+    const { rating: _unused, ...withoutRating } = base
+    const result = sanitizeAttractionPayload(withoutRating)
+    expect(result).not.toHaveProperty('rating')
+  })
 })

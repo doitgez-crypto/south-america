@@ -8,7 +8,7 @@ export default function ExpenseItem({ expense, onEdit, onDelete }) {
   const [confirmDelete, setConfirmDelete] = useState(false)
 
   return (
-    <div className="bg-white border-b border-gray-100">
+    <div className="bg-white border-b border-gray-100" data-cy="expense-item">
       <div className="flex items-center gap-3 px-4 py-3">
         {/* Icon */}
         <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-xl flex-shrink-0">
@@ -17,7 +17,7 @@ export default function ExpenseItem({ expense, onEdit, onDelete }) {
 
         {/* Description + category */}
         <div className="flex-1 min-w-0">
-          <p className="font-medium text-gray-800 truncate">
+          <p className="font-medium text-gray-800 truncate" data-cy="expense-title">
             {title || EXPENSE_CATEGORY_LABELS_HE[category]}
           </p>
           <p className="text-xs text-gray-400">{EXPENSE_CATEGORY_LABELS_HE[category]}</p>
@@ -33,12 +33,14 @@ export default function ExpenseItem({ expense, onEdit, onDelete }) {
         {/* Actions */}
         <div className="flex items-center gap-1 flex-shrink-0 mr-1">
           <button
+            data-cy="expense-edit-btn"
             onClick={() => onEdit(expense)}
             className="p-2 text-gray-400 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition-colors"
           >
             <Pencil size={16} />
           </button>
           <button
+            data-cy="expense-delete-btn"
             onClick={() => setConfirmDelete(true)}
             className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
           >
@@ -59,6 +61,7 @@ export default function ExpenseItem({ expense, onEdit, onDelete }) {
               ביטול
             </button>
             <button
+              data-cy="expense-confirm-delete"
               onClick={() => { onDelete(expense.id); setConfirmDelete(false) }}
               className="px-3 py-1.5 text-sm font-bold text-white bg-red-500 rounded-lg"
             >

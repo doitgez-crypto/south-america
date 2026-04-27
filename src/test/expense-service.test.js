@@ -187,6 +187,15 @@ describe('createExpenseRecord', () => {
       createExpenseRecord('trip-1', { amount: 10, currency: 'USD' })
     ).rejects.toThrow('insert failed')
   })
+
+  it('preserves explicit expense_date when provided', async () => {
+    const chain = mocks.makeChain({ data: { id: 'x' }, error: null })
+    mocks.mockFrom.mockReturnValue(chain)
+    await createExpenseRecord('trip-1', { amount: 10, currency: 'USD', expense_date: '2024-01-15' })
+    expect(chain.insert).toHaveBeenCalledWith(
+      expect.objectContaining({ expense_date: '2024-01-15' })
+    )
+  })
 })
 
 // ── updateExpenseRecord ───────────────────────────────────────────────────────
@@ -205,6 +214,16 @@ describe('updateExpenseRecord', () => {
     await expect(
       updateExpenseRecord('exp-1', { amount: 30 })
     ).rejects.toThrow('update failed')
+  })
+
+  it('sends correct fields to Supabase and targets the correct row', async () => {
+    const chain = mocks.makeChain({ data: { id: 'exp-1' }, error: null })
+    mocks.mockFrom.mockReturnValue(chain)
+    await updateExpenseRecord('exp-1', { amount: 99, currency: 'EUR', title: 'Hotel', category: 'Accommodation', expense_date: '2024-07-04' })
+    expect(chain.update).toHaveBeenCalledWith(
+      expect.objectContaining({ amount: 99, currency: 'EUR', title: 'Hotel', category: 'Accommodation', expense_date: '2024-07-04' })
+    )
+    expect(chain.eq).toHaveBeenCalledWith('id', 'exp-1')
   })
 })
 
@@ -240,5 +259,11 @@ describe('softDeleteExpense', () => {
     const genericErr = new Error('generic DB error')
     mocks.mockFrom.mockReturnValue(mocks.makeChain({ error: genericErr }))
     await expect(softDeleteExpense('exp-1')).rejects.toThrow('generic DB error')
+  })
+
+  it('throws a Hebrew RLS error when error message contains "permission"', async () => {
+    const permErr = { code: '403', message: 'permission denied' }
+    mocks.mockFrom.mockReturnValue(mocks.makeChain({ error: permErr }))
+    await expect(softDeleteExpense('exp-1')).rejects.toThrow('שגיאת הרשאות')
   })
 })

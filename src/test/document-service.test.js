@@ -78,6 +78,10 @@ describe('generateDocumentPath', () => {
     expect(path1).toMatch(/^trip-1\/\d+\.pdf$/)
     expect(path2).toMatch(/^trip-1\/\d+\.pdf$/)
   })
+
+  it('takes only the last extension for multi-dot filenames', () => {
+    expect(generateDocumentPath('t', { name: 'my.backup.file.pdf' })).toMatch(/\.pdf$/)
+  })
 })
 
 // ── detectFileType ────────────────────────────────────────────────────────────
@@ -106,6 +110,7 @@ describe('fetchDocuments', () => {
   it('returns [] for falsy tripId without calling Supabase', async () => {
     expect(await fetchDocuments(null)).toEqual([])
     expect(await fetchDocuments('')).toEqual([])
+    expect(await fetchDocuments(undefined)).toEqual([])
     expect(mocks.mockFrom).not.toHaveBeenCalled()
   })
 
@@ -248,5 +253,14 @@ describe('softDeleteDocument', () => {
     await softDeleteDocument('doc-1', fileUrl)
     expect(chain.update).toHaveBeenCalledWith({ is_deleted: true })
     expect(chain.eq).toHaveBeenCalledWith('id', 'doc-1')
+  })
+
+  it('skips storage deletion when fileUrl does not contain the bucket path separator', async () => {
+    // URL without /trip-documents/ → path split returns undefined → storage skipped
+    const urlWithoutBucket = 'https://storage.example.com/other-bucket/doc.pdf'
+    mocks.mockFrom.mockReturnValue(mocks.makeChain({ error: null }))
+    const result = await softDeleteDocument('doc-1', urlWithoutBucket)
+    expect(mocks.mockRemove).not.toHaveBeenCalled()
+    expect(result).toEqual({ storageDeleted: true })
   })
 })

@@ -19,6 +19,7 @@ export default function BottomNav() {
         return (
           <button
             key={key}
+            data-cy={`nav-${key}`}
             onClick={() => setActiveTab(key)}
             className={`flex-1 flex flex-col items-center justify-center gap-0.5 py-2 transition-colors ${
               active ? 'text-primary-600' : 'text-gray-400 hover:text-gray-600'
