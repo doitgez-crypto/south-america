@@ -71,6 +71,6 @@ describe('Image Upload in Add Attraction Modal', () => {
     attachImage()
 
     // After the (fast) upload completes, the button should revert to "שמור"
-    cy.contains('button', 'שמור').should('be.visible')
+    cy.get('[data-cy="save-attraction-btn"]').should('contain.text', 'שמור').and('be.visible')
   })
 })
