@@ -17,7 +17,7 @@ export default function AttractionCard({ attraction, onSelect, onEdit, onDelete 
   const [confirmDelete, setConfirmDelete] = useState(false)
 
   return (
-    <div className="bg-white border-b border-gray-100">
+    <div className="bg-white border-b border-gray-100" data-cy="attraction-item">
       {/* Main row — tap opens detail */}
       <div
         onClick={() => onSelect(attraction)}

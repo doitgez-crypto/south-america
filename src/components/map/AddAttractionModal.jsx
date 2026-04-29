@@ -160,6 +160,7 @@ export default function AddAttractionModal({
         <button 
           onClick={handleSubmit}
           disabled={!name.trim() || isSaving || uploading}
+          data-cy="save-attraction-btn"
           className="px-6 py-2 bg-primary-600 text-white font-bold rounded-xl disabled:opacity-50 active:scale-95 transition-all shadow-md flex items-center gap-2"
         >
           {(isSaving || uploading) && <Loader2 className="w-4 h-4 animate-spin" />}
@@ -324,7 +325,7 @@ export default function AddAttractionModal({
               </div>
             ))}
             <label className="aspect-square rounded-lg border-2 border-dashed border-earth-200 flex flex-col items-center justify-center text-earth-400 cursor-pointer hover:border-primary-400 hover:text-primary-400 transition-all">
-              <input type="file" multiple accept="image/*" className="hidden" onChange={handleImageChange} />
+              <input type="file" multiple accept="image/*" className="hidden" data-cy="image-file-input" onChange={handleImageChange} />
               <Plus size={24} />
               <span className="text-[10px] mt-1">הוסף</span>
             </label>

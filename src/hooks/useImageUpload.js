@@ -6,12 +6,14 @@ import { useUploadQueue } from './useUploadQueue'
 
 const BUCKET = 'attraction-images'
 const COMPRESSION_OPTIONS = {
-  maxSizeMB: 0.1,
+  maxSizeMB: 0.8,
   maxWidthOrHeight: 1024,
-  useWebWorker: true,
-  onProgress: () => {},
+  // useWebWorker: false — web workers can silently hang in Vite/PWA contexts (blob URL init failure),
+  // causing the upload to stall until the timeout fires. Main-thread compression is safer.
+  useWebWorker: false,
 }
-const UPLOAD_TIMEOUT_MS = 45_000 // 45 seconds per file (slow South America connections)
+const COMPRESS_TIMEOUT_MS = 15_000
+const UPLOAD_TIMEOUT_MS = 30_000
 
 /** Race a promise against a timeout */
 function withTimeout(promise, ms, label = 'Operation') {
@@ -46,7 +48,7 @@ export function useImageUpload() {
               ...COMPRESSION_OPTIONS,
               onProgress: (p) => setProgress(Math.round(((i + p / 100) / files.length) * 100)),
             }),
-            UPLOAD_TIMEOUT_MS,
+            COMPRESS_TIMEOUT_MS,
             'Image compression'
           )
         } catch (compressErr) {
@@ -86,7 +88,7 @@ export function useImageUpload() {
           } else {
             console.error('Image upload failed:', err)
             toast.error(`העלאת תמונה נכשלה: ${err.message || 'שגיאה לא ידועה'}`)
-            throw err // propagate — don't silently return []
+            // continue to next file — don't abort the entire batch for one failure
           }
         }
         
